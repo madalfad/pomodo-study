@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { motion, AnimatePresence } from "framer-motion";
+import { playSound, initializeSound, setVolume } from "@/lib/soundManager";
+// Ensure the sound files are imported once
+import beginSoundFile from "@/assets/sounds/begin.mp3";
+import breakStartSoundFile from "@/assets/sounds/breakstart.mp3";
+import breakEndSoundFile from "@/assets/sounds/breakend.mp3";
 
 interface PomodoroSettings {
   focusTime: number;
@@ -34,114 +39,40 @@ const PomodoroTimer: FC = () => {
 
   const timerRef = useRef<number | null>(null);
 
-  // Audio elements refs
-  const beginSoundRef = useRef<HTMLAudioElement | null>(null);
-  const breakStartSoundRef = useRef<HTMLAudioElement | null>(null);
-  const breakEndSoundRef = useRef<HTMLAudioElement | null>(null);
-
-  // Function to play sound with proper error handling
-  const playAudio = (audioRef: React.RefObject<HTMLAudioElement>, volume: number) => {
-    if (!audioRef.current) {
-      console.error('Audio element not found');
-      return;
-    }
-    
+  // Sound IDs for the timer sounds
+  const TIMER_BEGIN_SOUND = 'timer-begin';
+  const TIMER_BREAK_START_SOUND = 'timer-break-start';
+  const TIMER_BREAK_END_SOUND = 'timer-break-end';
+  
+  // Function to play a sound using the soundManager
+  const playTimerSound = (soundId: string, volume: number) => {
     try {
-      const audio = audioRef.current;
-      console.log('Attempting to play audio from source:', audio.src);
-      
-      // Set volume and play
-      audio.volume = volume;
-      
-      // Reset audio to start
-      audio.currentTime = 0;
-      
-      // Try to load the audio explicitly
-      audio.load();
-      
-      // Play the audio with promise handling and retry logic
-      const playPromise = audio.play();
-      
-      // Modern browsers return a promise from the play method
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log('Audio playback started successfully');
-          })
-          .catch(error => {
-            // Auto-play was prevented or other error
-            console.error('Error playing audio:', error);
-            
-            // Try once more after a short delay
-            setTimeout(() => {
-              console.log('Retrying audio playback...');
-              audio.load();
-              audio.play().catch(retryError => {
-                console.error('Retry failed:', retryError);
-              });
-            }, 500);
-          });
-      }
+      console.log(`Playing timer sound: ${soundId} at volume ${volume}`);
+      // Set volume first
+      setVolume(soundId, volume);
+      // Then play the sound
+      playSound(soundId, volume);
     } catch (error) {
-      console.error('Error during audio playback:', error);
+      console.error(`Error playing timer sound ${soundId}:`, error);
     }
   };
 
-  // Initialize audio elements
+  // Initialize the sounds using the sound manager
   useEffect(() => {
-    // Create audio elements for each sound - using paths relative to the public directory
-    beginSoundRef.current = new Audio('/begin.mp3');
-    breakStartSoundRef.current = new Audio('/breakstart.mp3');
-    breakEndSoundRef.current = new Audio('/breakend.mp3');
+    // Initialize all the sounds with the sound manager
+    console.log('Initializing timer sounds...');
     
-    // Add event listeners for error handling
-    const beginAudio = beginSoundRef.current;
-    const breakStartAudio = breakStartSoundRef.current;
-    const breakEndAudio = breakEndSoundRef.current;
+    // Initialize the sounds with their respective files
+    initializeSound(TIMER_BEGIN_SOUND, beginSoundFile);
+    initializeSound(TIMER_BREAK_START_SOUND, breakStartSoundFile);
+    initializeSound(TIMER_BREAK_END_SOUND, breakEndSoundFile);
     
-    const handleError = (e: ErrorEvent, soundName: string) => {
-      console.error(`Error loading ${soundName} sound:`, e);
-    };
+    // Set initial volumes
+    setVolume(TIMER_BEGIN_SOUND, alertVolume);
+    setVolume(TIMER_BREAK_START_SOUND, alertVolume);
+    setVolume(TIMER_BREAK_END_SOUND, alertVolume);
     
-    if (beginAudio) {
-      beginAudio.preload = 'auto';
-      beginAudio.addEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'begin'));
-      console.log('Sound timer-begin initialized');
-    }
-    
-    if (breakStartAudio) {
-      breakStartAudio.preload = 'auto';
-      breakStartAudio.addEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'breakstart'));
-      console.log('Sound timer-breakstart initialized');
-    }
-    
-    if (breakEndAudio) {
-      breakEndAudio.preload = 'auto';
-      breakEndAudio.addEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'breakend'));
-      console.log('Sound timer-breakend initialized');
-    }
-    
-    // Test loading the sounds explicitly
-    console.log('Attempting to load audio files from paths:');
-    console.log('- begin:', beginAudio?.src);
-    console.log('- breakstart:', breakStartAudio?.src);
-    console.log('- breakend:', breakEndAudio?.src);
-    
-    // Clean up function
-    return () => {
-      if (beginAudio) {
-        beginAudio.removeEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'begin'));
-      }
-      if (breakStartAudio) {
-        breakStartAudio.removeEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'breakstart'));
-      }
-      if (breakEndAudio) {
-        breakEndAudio.removeEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'breakend'));
-      }
-      beginSoundRef.current = null;
-      breakStartSoundRef.current = null;
-      breakEndSoundRef.current = null;
-    };
+    console.log('Timer sounds initialized successfully');
   }, []);
 
   useEffect(() => {
@@ -152,9 +83,9 @@ const PomodoroTimer: FC = () => {
             // Timer completed
             // Play appropriate sound based on current timer type
             if (timerType === 'focus') {
-              playAudio(breakStartSoundRef, alertVolume);
+              playTimerSound(TIMER_BREAK_START_SOUND, alertVolume);
             } else {
-              playAudio(breakEndSoundRef, alertVolume);
+              playTimerSound(TIMER_BREAK_END_SOUND, alertVolume);
             }
             clearInterval(timerRef.current!);
 
@@ -226,7 +157,7 @@ const PomodoroTimer: FC = () => {
 
     // Play begin sound when starting the timer (not when pausing)
     if (!wasRunning) {
-      playAudio(beginSoundRef, alertVolume);
+      playTimerSound(TIMER_BEGIN_SOUND, alertVolume);
     }
   };
 
