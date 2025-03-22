@@ -39,10 +39,8 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen flex flex-col" style={{ 
+      <div className="min-h-screen flex flex-col bg-gray-900 text-gray-100" style={{ 
         fontFamily: "'Work Sans', sans-serif",
-        backgroundColor: "#F7F7F7",
-        color: "#333333"
       }}>
         <Header />
         <Router />

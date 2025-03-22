@@ -2,6 +2,7 @@ import { FC, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { motion } from "framer-motion";
 
 interface ActiveUser {
   id: string;
@@ -13,8 +14,14 @@ interface ActiveUser {
 const GlobeVisualization: FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeUsers, setActiveUsers] = useState<number>(0);
-  const sceneRef = useRef<{ scene?: THREE.Scene, renderer?: THREE.WebGLRenderer, camera?: THREE.PerspectiveCamera, globe?: THREE.Mesh, controls?: OrbitControls }>({}); 
-  const markersRef = useRef<THREE.Mesh[]>([]);
+  const sceneRef = useRef<{ 
+    scene?: THREE.Scene, 
+    renderer?: THREE.WebGLRenderer, 
+    camera?: THREE.PerspectiveCamera, 
+    globe?: THREE.Mesh, 
+    controls?: OrbitControls 
+  }>({});
+  const markersRef = useRef<Array<THREE.Mesh>>([]);
   const animationFrameRef = useRef<number>();
 
   // Generate simulated user data for the globe
@@ -87,7 +94,7 @@ const GlobeVisualization: FC = () => {
     });
     
     const globe = new THREE.Mesh(globeGeometry, globeMaterial);
-    scene.add(globe);
+    scene.add(globe as any);
     
     // Add a glow effect
     const glowGeometry = new THREE.SphereGeometry(radius * 1.01, segments, segments);
@@ -98,12 +105,12 @@ const GlobeVisualization: FC = () => {
       side: THREE.BackSide
     });
     const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
-    scene.add(glowMesh);
+    scene.add(glowMesh as any);
     
     // Grid for reference
     const gridHelper = new THREE.GridHelper(2 * radius, 10, 0x7077A1, 0x7077A1);
     gridHelper.position.y = -radius - 0.1;
-    scene.add(gridHelper);
+    scene.add(gridHelper as any);
     
     // Store references for cleanup and animation
     sceneRef.current = { scene, renderer, camera, globe, controls };
@@ -127,7 +134,7 @@ const GlobeVisualization: FC = () => {
       
       // Clear existing markers
       if (markersRef.current.length > 0) {
-        markersRef.current.forEach(marker => scene.remove(marker));
+        markersRef.current.forEach(marker => scene.remove(marker as any));
         markersRef.current = [];
       }
       
@@ -144,7 +151,7 @@ const GlobeVisualization: FC = () => {
         
         const marker = new THREE.Mesh(markerGeometry, markerMaterial);
         marker.position.set(position.x, position.y, position.z);
-        scene.add(marker);
+        scene.add(marker as any);
         markersRef.current.push(marker);
       });
     };
@@ -200,26 +207,32 @@ const GlobeVisualization: FC = () => {
   }, []);
 
   return (
-    <Card className="shadow-soft">
-      <CardContent className="p-6">
-        <h2 className="text-xl font-poppins font-semibold mb-5 text-primary flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Focus Community
-        </h2>
-        
-        <div ref={containerRef} className="globe-container h-[200px] w-full relative rounded-custom overflow-hidden">
-          {/* Three.js will render here */}
-        </div>
-        
-        <div className="mt-4 text-center text-sm text-gray-600 font-workSans">
-          <p>
-            <span className="font-semibold text-secondary">{activeUsers.toLocaleString()}</span> people focusing worldwide right now
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2 }}
+    >
+      <Card className="shadow-lg bg-gray-800 border-gray-700">
+        <CardContent className="p-6">
+          <h2 className="text-xl font-poppins font-semibold mb-5 text-amber-400 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Focus Community
+          </h2>
+          
+          <div ref={containerRef} className="globe-container h-[250px] w-full relative rounded-lg overflow-hidden bg-gray-900">
+            {/* Three.js will render here */}
+          </div>
+          
+          <div className="mt-4 text-center text-sm text-gray-400 font-workSans">
+            <p>
+              <span className="font-semibold text-amber-400">{activeUsers.toLocaleString()}</span> people focusing worldwide right now
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 };
 
