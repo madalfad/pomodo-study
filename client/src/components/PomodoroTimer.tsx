@@ -47,11 +47,25 @@ const PomodoroTimer: FC = () => {
 
   useEffect(() => {
     if (isRunning) {
+      // Play begin sound when timer starts
+      if (prev => prev === timerSettings.focusTime * 60 || prev === timerSettings.breakTime * 60 || prev === timerSettings.longBreakTime * 60) {
+        const beginSound = new Audio('/attached_assets/begin.mp3');
+        beginSound.volume = alertVolume;
+        beginSound.play().catch(error => console.log('Error playing begin sound:', error));
+      }
+      
       timerRef.current = window.setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
             // Timer completed
-            const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3');
+            // Play appropriate sound based on current timer type
+            let soundFile = '/attached_assets/breakstart.mp3'; // Default to break start
+            
+            if (timerType !== 'focus') {
+              soundFile = '/attached_assets/breakend.mp3'; // Use break end when transitioning from break
+            }
+            
+            const audio = new Audio(soundFile);
             audio.volume = alertVolume;
             audio.play().catch(error => console.log('Error playing audio:', error));
             clearInterval(timerRef.current!);
@@ -119,7 +133,15 @@ const PomodoroTimer: FC = () => {
   };
 
   const startTimer = () => {
+    const wasRunning = isRunning;
     setIsRunning(prev => !prev);
+    
+    // Play begin sound when starting the timer (not when pausing)
+    if (!wasRunning) {
+      const beginSound = new Audio('/attached_assets/begin.mp3');
+      beginSound.volume = alertVolume;
+      beginSound.play().catch(error => console.log('Error playing begin sound:', error));
+    }
   };
 
   const resetTimer = () => {
