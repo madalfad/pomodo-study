@@ -15,7 +15,7 @@ const Footer: FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 md:mb-0">
             <div className="flex items-center justify-center md:justify-start">
-              <span className="text-amber-400 font-poppins font-bold text-lg">StudyViber</span>
+              <span className="text-amber-400 font-poppins font-bold text-lg">pomodo.study</span>
               <span className="mx-2 text-gray-600">|</span>
               <span className="text-gray-400 text-sm">Focus with flow</span>
             </div>
@@ -36,7 +36,7 @@ const Footer: FC = () => {
         </div>
         
         <div className="mt-6 border-t border-gray-800 pt-4 text-center text-xs text-gray-500 font-workSans">
-          <p>&copy; {currentYear} StudyViber. All rights reserved.</p>
+          <p>&copy; {currentYear} Mahmoud Al-Fadhl. All rights reserved.</p>
           <p className="mt-1">Focus better with customizable sounds and productivity tools.</p>
         </div>
       </div>

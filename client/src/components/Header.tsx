@@ -26,7 +26,7 @@ const Header: FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-amber-600">
-                StudyViber
+                pomodo.study
               </span>
             </motion.div>
           </Link>
@@ -76,7 +76,7 @@ const Header: FC = () => {
               transition={{ type: "spring", damping: 20 }}
             >
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-poppins font-bold text-amber-400">About StudyViber</h2>
+                <h2 className="text-xl font-poppins font-bold text-amber-400">About pomodo.study</h2>
                 <button 
                   onClick={toggleInfo}
                   className="text-gray-400 hover:text-white"
@@ -89,7 +89,7 @@ const Header: FC = () => {
               
               <div className="text-gray-300 space-y-3 font-workSans text-sm">
                 <p>
-                  StudyViber is a distraction-free web-based study environment designed to help you focus and be productive.
+                  pomodo.study is a distraction-free web-based study environment designed to help you focus and be productive.
                 </p>
                 <p>
                   Features include:
