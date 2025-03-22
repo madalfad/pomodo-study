@@ -42,11 +42,14 @@ const studyRegions = [
 const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
 // Convert lat/long to 3D position on a sphere
-// Adjusted for better mapping with the provided SVG
+// Adjusted coordinate mapping to match the SVG map correctly
 const latLongToVector3 = (lat: number, lng: number, radius: number) => {
-  // For equirectangular map projection, adjust phi calculation
-  // SVG is 1280x688, so we need to adjust for aspect ratio
-  const phi = (90 - lat) * Math.PI / 180;
+  // Apply a correction factor to latitude to adjust positioning
+  // This moves northern hemisphere markers a bit south to match the map better
+  const correctedLat = lat > 0 ? lat * 0.75 : lat * 0.85;
+  
+  // Convert to radians with corrections
+  const phi = (90 - correctedLat) * Math.PI / 180;
   const theta = (lng + 180) * Math.PI / 180;
   
   // Standard formula for converting spherical coordinates to cartesian
