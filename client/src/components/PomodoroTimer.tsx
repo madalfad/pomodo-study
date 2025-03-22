@@ -20,7 +20,7 @@ const PomodoroTimer: FC = () => {
     longBreakTime: 15,
     cyclesBeforeLongBreak: 4
   });
-  
+
   const [timerType, setTimerType] = useState<'focus' | 'break' | 'longBreak'>('focus');
   const [timeRemaining, setTimeRemaining] = useState(timerSettings.focusTime * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -31,46 +31,66 @@ const PomodoroTimer: FC = () => {
   const [longBreakInput, setLongBreakInput] = useState(timerSettings.longBreakTime.toString());
   const [cyclesInput, setCyclesInput] = useState(timerSettings.cyclesBeforeLongBreak.toString());
   const [alertVolume, setAlertVolume] = useLocalStorage<number>("alertVolume", 0.5);
-  
+
   const timerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    // Reset timer when settings change
-    let duration = timerSettings.focusTime;
-    if (timerType === 'break') duration = timerSettings.breakTime;
-    if (timerType === 'longBreak') duration = timerSettings.longBreakTime;
-    
-    if (!isRunning) {
-      setTimeRemaining(duration * 60);
+  // Placeholder for a sound manager function.  Replace with actual implementation if needed.
+  const playAudio = (soundPath: string, volume: number) => {
+    try {
+      const audio = new Audio(soundPath);
+      audio.volume = volume;
+      audio.play().then(() => {
+        console.log(`Successfully played ${soundPath}`);
+      }).catch(error => {
+        console.error(`Error playing audio ${soundPath}:`, error);
+      });
+    } catch (error) {
+      console.error('Error creating audio:', error);
     }
-  }, [timerSettings, timerType]);
+  }
+
+
+  // Initialize timer sound effects
+  useEffect(() => {
+    // Add timer sounds to the available tracks
+    const timerSounds = [
+      { id: 'timer-begin', url: 'attached_assets/begin.mp3' },
+      { id: 'timer-breakstart', url: 'attached_assets/breakstart.mp3' },
+      { id: 'timer-breakend', url: 'attached_assets/breakend.mp3' }
+    ];
+
+    // Initialize the sounds
+    timerSounds.forEach(sound => {
+      try {
+        const audio = new Audio(sound.url);
+        audio.preload = 'auto';
+        // Just load the audio for later use
+        audio.load();
+        console.log(`Sound ${sound.id} initialized`);
+      } catch (error) {
+        console.error(`Error initializing sound ${sound.id}:`, error);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (isRunning) {
-      // Play begin sound when timer starts
-      const beginSound = new Audio('/attached_assets/begin.mp3');
-      beginSound.volume = alertVolume;
-      beginSound.play().catch(error => console.log('Error playing begin sound:', error));
-      
       timerRef.current = window.setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
             // Timer completed
             // Play appropriate sound based on current timer type
-            let soundFile = 'attached_assets/breakstart.mp3'; // Default to break start
-            
-            if (timerType !== 'focus') {
-              soundFile = 'attached_assets/breakend.mp3'; // Use break end when transitioning from break
-            }
-            
-            const audio = new Audio(soundFile);
-            audio.volume = alertVolume;
-            audio.play().catch(error => console.log('Error playing audio:', error));
+            const soundPath = timerType === 'focus' 
+              ? 'attached_assets/breakstart.mp3' 
+              : 'attached_assets/breakend.mp3';
+
+            // Use our utility function to play the sound
+            playAudio(soundPath, alertVolume);
             clearInterval(timerRef.current!);
-            
+
             // Auto-transition to the next phase
             progressToNextPhase();
-            
+
             // Return a placeholder value - this won't be used because we're progressing to next phase
             return 0;
           }
@@ -80,7 +100,7 @@ const PomodoroTimer: FC = () => {
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-    
+
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -98,7 +118,7 @@ const PomodoroTimer: FC = () => {
     let newTimerType: 'focus' | 'break' | 'longBreak';
     let newDuration: number;
     let newCycle = currentCycle;
-    
+
     if (timerType === 'focus') {
       // After focus, go to break or long break
       if (currentCycle >= timerSettings.cyclesBeforeLongBreak) {
@@ -113,17 +133,17 @@ const PomodoroTimer: FC = () => {
       // After any break, go back to focus
       newTimerType = 'focus';
       newDuration = timerSettings.focusTime * 60;
-      
+
       if (timerType === 'break') {
         newCycle = currentCycle + 1;
       }
     }
-    
+
     // Dispatch custom event for sound mixer
     window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
       detail: { timerType: newTimerType }
     }));
-    
+
     setTimerType(newTimerType);
     setTimeRemaining(newDuration);
     setCurrentCycle(newCycle);
@@ -133,12 +153,10 @@ const PomodoroTimer: FC = () => {
   const startTimer = () => {
     const wasRunning = isRunning;
     setIsRunning(prev => !prev);
-    
+
     // Play begin sound when starting the timer (not when pausing)
     if (!wasRunning) {
-      const beginSound = new Audio('attached_assets/begin.mp3');
-      beginSound.volume = alertVolume;
-      beginSound.play().catch(error => console.log('Error playing begin sound:', error));
+      playAudio('attached_assets/begin.mp3', alertVolume);
     }
   };
 
@@ -146,7 +164,7 @@ const PomodoroTimer: FC = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-    
+
     setTimerType('focus');
     setCurrentCycle(1);
     setTimeRemaining(timerSettings.focusTime * 60);
@@ -158,19 +176,19 @@ const PomodoroTimer: FC = () => {
     const breakValue = Math.max(1, parseInt(breakInput) || 5);
     const longBreakValue = Math.max(1, parseInt(longBreakInput) || 15);
     const cyclesValue = Math.max(1, parseInt(cyclesInput) || 4);
-    
+
     setTimerSettings({
       focusTime: focusValue,
       breakTime: breakValue,
       longBreakTime: longBreakValue,
       cyclesBeforeLongBreak: cyclesValue
     });
-    
+
     setFocusInput(focusValue.toString());
     setBreakInput(breakValue.toString());
     setLongBreakInput(longBreakValue.toString());
     setCyclesInput(cyclesValue.toString());
-    
+
     // Reset the timer with new settings if not running
     if (!isRunning) {
       let duration = focusValue;
@@ -178,7 +196,7 @@ const PomodoroTimer: FC = () => {
       if (timerType === 'longBreak') duration = longBreakValue;
       setTimeRemaining(duration * 60);
     }
-    
+
     setShowSettings(false);
   };
 
@@ -186,7 +204,7 @@ const PomodoroTimer: FC = () => {
   let duration = timerSettings.focusTime * 60;
   if (timerType === 'break') duration = timerSettings.breakTime * 60;
   if (timerType === 'longBreak') duration = timerSettings.longBreakTime * 60;
-  
+
   const progress = 1 - (timeRemaining / duration);
   const circumference = 2 * Math.PI * 46;
   const strokeDashoffset = circumference * (1 - progress);
@@ -221,7 +239,7 @@ const PomodoroTimer: FC = () => {
               </svg>
             </button>
           </div>
-          
+
           <AnimatePresence mode="wait">
             {showSettings ? (
               <motion.div 
@@ -355,7 +373,7 @@ const PomodoroTimer: FC = () => {
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="flex space-x-4 mb-6">
                   <Button 
                     className={`hover:bg-opacity-90 text-gray-900 px-4 py-2 rounded shadow-sm transition-all duration-200 font-poppins ${isRunning ? 'bg-red-400 hover:bg-red-500' : 'bg-amber-500 hover:bg-amber-600'}`}
@@ -395,7 +413,7 @@ const PomodoroTimer: FC = () => {
                     </svg> Reset
                   </Button>
                 </div>
-                
+
                 <div className="w-full">
                   <div className="flex justify-between mb-2 text-sm">
                     <span className="text-gray-400">Cycle {currentCycle} of {timerSettings.cyclesBeforeLongBreak}</span>
@@ -408,7 +426,7 @@ const PomodoroTimer: FC = () => {
                        `${timerSettings.longBreakTime}min long break`}
                     </span>
                   </div>
-                  
+
                   <div className="bg-gray-700 h-2 rounded-full overflow-hidden">
                     <div 
                       className="h-full rounded-full transition-all duration-300 ease-in-out" 
@@ -422,7 +440,7 @@ const PomodoroTimer: FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
-          
+
         </CardContent>
       </Card>
     </motion.div>
