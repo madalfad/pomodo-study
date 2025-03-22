@@ -23,6 +23,30 @@ const SoundMixer: FC = () => {
     ambienceBreakVolume: 60
   });
 
+  useEffect(() => {
+    const handleBreakVolumeChange = (event: CustomEvent) => {
+      const { type, volume } = event.detail;
+      
+      if (type === 'music') {
+        setVideoSettings(prev => ({
+          ...prev,
+          musicBreakVolume: volume
+        }));
+      } else if (type === 'ambience') {
+        setVideoSettings(prev => ({
+          ...prev,
+          ambienceBreakVolume: volume
+        }));
+      }
+    };
+    
+    window.addEventListener('breakVolumeChange' as any, handleBreakVolumeChange);
+    
+    return () => {
+      window.removeEventListener('breakVolumeChange' as any, handleBreakVolumeChange);
+    };
+  }, [setVideoSettings]);
+
   const updateMusicVolume = (volume: number) => {
     setVideoSettings(prev => ({
       ...prev,

@@ -55,48 +55,12 @@ const PomodoroTimer: FC = () => {
             audio.volume = alertVolume;
             audio.play().catch(error => console.log('Error playing audio:', error));
             clearInterval(timerRef.current!);
-            setIsRunning(false);
             
-            // Handle cycle progression
-            if (timerType === 'focus') {
-              // Check if we need a long break
-              if (currentCycle >= timerSettings.cyclesBeforeLongBreak) {
-                const newTimerType = 'longBreak';
-                setTimerType(newTimerType);
-                setCurrentCycle(1); // Reset cycle count
-                
-                // Dispatch custom event for sound mixer
-                window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
-                  detail: { timerType: newTimerType }
-                }));
-                
-                return timerSettings.longBreakTime * 60;
-              } else {
-                const newTimerType = 'break';
-                setTimerType(newTimerType);
-                
-                // Dispatch custom event for sound mixer
-                window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
-                  detail: { timerType: newTimerType }
-                }));
-                
-                return timerSettings.breakTime * 60;
-              }
-            } else {
-              // After any break, go back to focus
-              const newTimerType = 'focus';
-              setTimerType(newTimerType);
-              
-              // Dispatch custom event for sound mixer
-              window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
-                detail: { timerType: newTimerType }
-              }));
-              
-              if (timerType === 'break') {
-                setCurrentCycle(prev => prev + 1);
-              }
-              return timerSettings.focusTime * 60;
-            }
+            // Auto-transition to the next phase
+            progressToNextPhase();
+            
+            // Return a placeholder value - this won't be used because we're progressing to next phase
+            return 0;
           }
           return prev - 1;
         });
@@ -116,6 +80,42 @@ const PomodoroTimer: FC = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progressToNextPhase = () => {
+    let newTimerType: 'focus' | 'break' | 'longBreak';
+    let newDuration: number;
+    let newCycle = currentCycle;
+    
+    if (timerType === 'focus') {
+      // After focus, go to break or long break
+      if (currentCycle >= timerSettings.cyclesBeforeLongBreak) {
+        newTimerType = 'longBreak';
+        newDuration = timerSettings.longBreakTime * 60;
+        newCycle = 1; // Reset cycle count
+      } else {
+        newTimerType = 'break';
+        newDuration = timerSettings.breakTime * 60;
+      }
+    } else {
+      // After any break, go back to focus
+      newTimerType = 'focus';
+      newDuration = timerSettings.focusTime * 60;
+      
+      if (timerType === 'break') {
+        newCycle = currentCycle + 1;
+      }
+    }
+    
+    // Dispatch custom event for sound mixer
+    window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
+      detail: { timerType: newTimerType }
+    }));
+    
+    setTimerType(newTimerType);
+    setTimeRemaining(newDuration);
+    setCurrentCycle(newCycle);
+    setIsRunning(true); // Auto-start next phase
   };
 
   const startTimer = () => {
@@ -355,6 +355,15 @@ const PomodoroTimer: FC = () => {
                         </svg> Start
                       </>
                     )}
+                  </Button>
+                  <Button 
+                    className="bg-indigo-500 hover:bg-indigo-600 text-gray-100 px-4 py-2 rounded shadow-sm transition-all duration-200 font-poppins"
+                    onClick={progressToNextPhase}
+                    title={`Skip to ${timerType === 'focus' ? 'break' : 'focus'}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg> Skip
                   </Button>
                   <Button 
                     variant="outline"
