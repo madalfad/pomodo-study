@@ -34,43 +34,73 @@ const PomodoroTimer: FC = () => {
 
   const timerRef = useRef<number | null>(null);
 
-  // Placeholder for a sound manager function.  Replace with actual implementation if needed.
-  const playAudio = (soundPath: string, volume: number) => {
-    try {
-      const audio = new Audio(soundPath);
-      audio.volume = volume;
-      audio.play().then(() => {
-        console.log(`Successfully played ${soundPath}`);
-      }).catch(error => {
-        console.error(`Error playing audio ${soundPath}:`, error);
-      });
-    } catch (error) {
-      console.error('Error creating audio:', error);
+  // Audio elements refs
+  const beginSoundRef = useRef<HTMLAudioElement | null>(null);
+  const breakStartSoundRef = useRef<HTMLAudioElement | null>(null);
+  const breakEndSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // Function to play sound with proper error handling
+  const playAudio = (audioRef: React.RefObject<HTMLAudioElement>, volume: number) => {
+    if (!audioRef.current) {
+      console.error('Audio element not found');
+      return;
     }
-  }
-
-
-  // Initialize timer sound effects
-  useEffect(() => {
-    // Add timer sounds to the available tracks
-    const timerSounds = [
-      { id: 'timer-begin', url: 'attached_assets/begin.mp3' },
-      { id: 'timer-breakstart', url: 'attached_assets/breakstart.mp3' },
-      { id: 'timer-breakend', url: 'attached_assets/breakend.mp3' }
-    ];
-
-    // Initialize the sounds
-    timerSounds.forEach(sound => {
-      try {
-        const audio = new Audio(sound.url);
-        audio.preload = 'auto';
-        // Just load the audio for later use
-        audio.load();
-        console.log(`Sound ${sound.id} initialized`);
-      } catch (error) {
-        console.error(`Error initializing sound ${sound.id}:`, error);
+    
+    try {
+      // Set volume and play
+      audioRef.current.volume = volume;
+      
+      // Reset audio to start
+      audioRef.current.currentTime = 0;
+      
+      // Play the audio with promise handling
+      const playPromise = audioRef.current.play();
+      
+      // Modern browsers return a promise from the play method
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('Audio playback started successfully');
+          })
+          .catch(error => {
+            // Auto-play was prevented or other error
+            console.error('Error playing audio:', error);
+          });
       }
-    });
+    } catch (error) {
+      console.error('Error during audio playback:', error);
+    }
+  };
+
+  // Initialize audio elements
+  useEffect(() => {
+    // Create audio elements for each sound
+    beginSoundRef.current = new Audio('/attached_assets/begin.mp3');
+    breakStartSoundRef.current = new Audio('/attached_assets/breakstart.mp3');
+    breakEndSoundRef.current = new Audio('/attached_assets/breakend.mp3');
+    
+    // Preload the audio files
+    if (beginSoundRef.current) {
+      beginSoundRef.current.preload = 'auto';
+      console.log('Sound timer-begin initialized');
+    }
+    
+    if (breakStartSoundRef.current) {
+      breakStartSoundRef.current.preload = 'auto';
+      console.log('Sound timer-breakstart initialized');
+    }
+    
+    if (breakEndSoundRef.current) {
+      breakEndSoundRef.current.preload = 'auto';
+      console.log('Sound timer-breakend initialized');
+    }
+    
+    // Clean up function
+    return () => {
+      beginSoundRef.current = null;
+      breakStartSoundRef.current = null;
+      breakEndSoundRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -80,12 +110,11 @@ const PomodoroTimer: FC = () => {
           if (prev <= 1) {
             // Timer completed
             // Play appropriate sound based on current timer type
-            const soundPath = timerType === 'focus' 
-              ? 'attached_assets/breakstart.mp3' 
-              : 'attached_assets/breakend.mp3';
-
-            // Use our utility function to play the sound
-            playAudio(soundPath, alertVolume);
+            if (timerType === 'focus') {
+              playAudio(breakStartSoundRef, alertVolume);
+            } else {
+              playAudio(breakEndSoundRef, alertVolume);
+            }
             clearInterval(timerRef.current!);
 
             // Auto-transition to the next phase
@@ -156,7 +185,7 @@ const PomodoroTimer: FC = () => {
 
     // Play begin sound when starting the timer (not when pausing)
     if (!wasRunning) {
-      playAudio('attached_assets/begin.mp3', alertVolume);
+      playAudio(beginSoundRef, alertVolume);
     }
   };
 
