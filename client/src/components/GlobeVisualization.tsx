@@ -44,9 +44,9 @@ const randomInRange = (min: number, max: number) => Math.random() * (max - min) 
 // Convert lat/long to 3D position on a sphere
 // Adjusted coordinate mapping to match the SVG map correctly
 const latLongToVector3 = (lat: number, lng: number, radius: number) => {
-  // Apply a correction factor to latitude to adjust positioning
-  // This moves northern hemisphere markers a bit south to match the map better
-  const correctedLat = lat > 0 ? lat * 0.75 : lat * 0.85;
+  // Apply a stronger correction factor to latitude to adjust positioning
+  // This moves northern hemisphere markers much more south to match the map better
+  const correctedLat = lat > 0 ? lat * 0.5 : lat * 0.85;
   
   // Convert to radians with corrections
   const phi = (90 - correctedLat) * Math.PI / 180;
