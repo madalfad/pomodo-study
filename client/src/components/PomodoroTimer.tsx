@@ -112,6 +112,9 @@ const PomodoroTimer: FC = () => {
         newTimerType = 'break';
         newDuration = timerSettings.breakTime * 60;
       }
+      
+      // Play break start sound when skipping from focus to break
+      playTimerSound(TimerSounds.breakStart, alertVolume);
     } else {
       // After any break, go back to focus
       newTimerType = 'focus';
@@ -120,6 +123,9 @@ const PomodoroTimer: FC = () => {
       if (timerType === 'break') {
         newCycle = currentCycle + 1;
       }
+      
+      // Play break end sound when skipping from break to focus
+      playTimerSound(TimerSounds.breakEnd, alertVolume);
     }
 
     // Dispatch custom event for sound mixer
