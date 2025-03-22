@@ -63,67 +63,65 @@ const GlobeVisualization: FC = () => {
   const animationFrameRef = useRef<number>();
   const pulsesRef = useRef<{mesh: THREE.Mesh, maxScale: number, speed: number}[]>([]);
 
-  // Generate user data including user's own location if available
+  // Generate user data
   const fetchUserLocations = async (): Promise<ActiveUser[]> => {
+    // Create predefined sample user with a nice color
+    const selfUser: ActiveUser = {
+      id: 'self',
+      lat: 37.7749, // San Francisco by default
+      lng: -122.4194,
+      timestamp: Date.now(),
+      color: '#F6B17A', // Warm orange for user
+      size: 0.018 // Larger size for user's location
+    };
+    
+    // Random number between 1000-1500 for active users count display
+    const count = Math.floor(Math.random() * 500) + 1000;
+    setActiveUsers(count);
+    
+    // Initialize with predefined self
+    const users: ActiveUser[] = [selfUser];
+    
+    // Try to get client's actual location if possible
     try {
-      // First get client's own IP location
-      const response = await fetch('https://ipapi.co/json/');
-      const data = await response.json();
+      const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
       
-      const users: ActiveUser[] = [];
-      // Random number between 1000-1500 for active users count
-      const count = Math.floor(Math.random() * 500) + 1000;
-      setActiveUsers(count);
-      
-      // Add user's own location if available
-      if (data.latitude && data.longitude) {
-        users.push({
-          id: 'self',
-          lat: data.latitude,
-          lng: data.longitude,
-          timestamp: Date.now(),
-          color: '#F6B17A', // Warm orange for user
-          size: 0.018 // Larger size for user's location
+      if (permissionStatus.state === 'granted') {
+        // Use the browser's geolocation API
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 5000,
+            maximumAge: 300000 // 5 minutes
+          });
         });
+        
+        // Update self user with actual location
+        if (position?.coords) {
+          selfUser.lat = position.coords.latitude;
+          selfUser.lng = position.coords.longitude;
+        }
       }
-      
-      // Add major study regions as active points
-      studyRegions.forEach((region, i) => {
-        users.push({
-          id: region.id,
-          lat: region.lat,
-          lng: region.lng,
-          timestamp: Date.now(),
-          color: i % 4 === 0 ? '#F7F7F7' : // White
-                 i % 4 === 1 ? '#7077A1' : // Muted purple
-                 i % 4 === 2 ? '#4e5683' : // Darker purple
-                 '#324d7a',                 // Deep blue
-          size: randomInRange(0.006, 0.012)
-        });
-      });
-      
-      return users;
-    } catch (error) {
-      console.error('Error fetching location data:', error);
-      
-      // Fallback to random data if IP geolocation fails
-      const users: ActiveUser[] = [];
-      // Add random points if geolocation fails
-      for (let i = 0; i < 20; i++) {
-        users.push({
-          id: `user-${i}`,
-          lat: (Math.random() * 180) - 90,
-          lng: (Math.random() * 360) - 180,
-          timestamp: Date.now(),
-          color: i % 4 === 0 ? '#F7F7F7' : 
-                 i % 4 === 1 ? '#7077A1' : 
-                 i % 4 === 2 ? '#4e5683' : 
-                 '#324d7a',
-          size: randomInRange(0.006, 0.014)
-        });
-      }
-      return users;
+    } catch (geoError) {
+      console.log('Geolocation not available:', geoError);
+      // Fallback is already handled with the default selfUser
     }
+    
+    // Add major study regions as active points
+    studyRegions.forEach((region, i) => {
+      users.push({
+        id: region.id,
+        lat: region.lat,
+        lng: region.lng,
+        timestamp: Date.now(),
+        color: i % 4 === 0 ? '#F7F7F7' : // White
+               i % 4 === 1 ? '#7077A1' : // Muted purple
+               i % 4 === 2 ? '#4e5683' : // Darker purple
+               '#324d7a',                 // Deep blue
+        size: randomInRange(0.006, 0.012)
+      });
+    });
+    
+    return users;
   };
 
   // Initialize and setup the globe
@@ -170,13 +168,13 @@ const GlobeVisualization: FC = () => {
       context.fillStyle = '#1a1a2e';
       context.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Draw some grid lines
-      context.strokeStyle = '#7077A140';
-      context.lineWidth = 1;
+      // Draw subtle grid lines
+      context.strokeStyle = 'rgba(112, 119, 161, 0.2)'; // #7077A1 with 0.2 opacity
+      context.lineWidth = 0.8;
       
       // Grid lines (latitude)
-      for (let i = 0; i < 6; i++) {
-        const y = (i * canvas.height) / 5;
+      for (let i = 0; i <= 8; i++) {
+        const y = (i * canvas.height) / 8;
         context.beginPath();
         context.moveTo(0, y);
         context.lineTo(canvas.width, y);
@@ -184,71 +182,153 @@ const GlobeVisualization: FC = () => {
       }
       
       // Grid lines (longitude)
-      for (let i = 0; i < 12; i++) {
-        const x = (i * canvas.width) / 11;
+      for (let i = 0; i <= 16; i++) {
+        const x = (i * canvas.width) / 16;
         context.beginPath();
         context.moveTo(x, 0);
         context.lineTo(x, canvas.height);
         context.stroke();
       }
       
-      // Draw simplified continents
-      context.fillStyle = '#364075';
+      // Create a better gradient for the continents
+      const continentGradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+      continentGradient.addColorStop(0, '#364075');   // Base color
+      continentGradient.addColorStop(0.5, '#4e5683'); // Slightly lighter
+      continentGradient.addColorStop(1, '#364075');   // Back to base
+      
+      context.fillStyle = continentGradient;
+      
+      // Draw more accurate and detailed continents
       
       // North America
       context.beginPath();
-      context.moveTo(200, 150);
-      context.lineTo(300, 100);
-      context.lineTo(350, 150);
-      context.lineTo(320, 200);
-      context.lineTo(200, 220);
+      context.moveTo(170, 130); // Alaska
+      context.lineTo(220, 100); // Northern Canada
+      context.lineTo(260, 110); // Northern Canada
+      context.lineTo(320, 120); // Greenland
+      context.lineTo(300, 150); // Eastern Canada
+      context.lineTo(260, 150); // Central Canada
+      context.lineTo(240, 180); // USA East Coast
+      context.lineTo(200, 190); // USA West Coast
+      context.lineTo(180, 210); // Mexico
+      context.lineTo(200, 230); // Central America
+      context.lineTo(230, 250); // Panama
+      context.lineTo(180, 200); // Mexico West
+      context.lineTo(170, 160); // USA West
+      context.lineTo(170, 130); // Back to Alaska
       context.fill();
+      
+      // Add subtle highlight to North America
+      const naHighlight = context.createLinearGradient(170, 100, 320, 250);
+      naHighlight.addColorStop(0, 'rgba(112, 119, 161, 0.2)');
+      naHighlight.addColorStop(1, 'rgba(26, 26, 46, 0)');
+      context.fillStyle = naHighlight;
+      context.fill();
+      
+      context.fillStyle = continentGradient; // Reset fill style
       
       // South America
       context.beginPath();
-      context.moveTo(280, 280);
-      context.lineTo(320, 300);
-      context.lineTo(300, 380);
-      context.lineTo(260, 420);
-      context.lineTo(230, 380);
-      context.lineTo(250, 330);
+      context.moveTo(245, 265); // Panama/Colombia border
+      context.bezierCurveTo(260, 290, 275, 310, 280, 340); // West coast curve
+      context.lineTo(270, 380); // Chile
+      context.lineTo(290, 420); // Argentina
+      context.lineTo(310, 400); // Brazil south
+      context.lineTo(330, 360); // Brazil east
+      context.lineTo(320, 300); // Brazil north
+      context.lineTo(290, 270); // Colombia/Venezuela
+      context.lineTo(245, 265); // Back to start
       context.fill();
       
-      // Europe & Africa
+      // Europe
       context.beginPath();
-      context.moveTo(500, 150);
-      context.lineTo(550, 100);
-      context.lineTo(600, 120);
-      context.lineTo(580, 180);
-      context.lineTo(540, 200);
-      context.lineTo(530, 240);
-      context.lineTo(550, 300);
-      context.lineTo(520, 380);
-      context.lineTo(480, 350);
-      context.lineTo(460, 250);
-      context.lineTo(500, 150);
+      context.moveTo(490, 140); // Western Europe
+      context.lineTo(520, 120); // Scandinavia
+      context.lineTo(560, 115); // Russia west
+      context.lineTo(550, 150); // Eastern Europe
+      context.lineTo(520, 170); // Mediterranean
+      context.lineTo(490, 160); // Spain/Portugal
+      context.lineTo(490, 140); // Back to start
+      context.fill();
+      
+      // Africa
+      context.beginPath();
+      context.moveTo(500, 180); // Northwest Africa
+      context.lineTo(550, 190); // Northeast Africa
+      context.lineTo(580, 270); // East Africa
+      context.lineTo(550, 350); // South Africa
+      context.lineTo(510, 350); // Southwest Africa
+      context.lineTo(470, 270); // West Africa
+      context.lineTo(480, 200); // Northwest Africa
+      context.lineTo(500, 180); // Back to start
       context.fill();
       
       // Asia
       context.beginPath();
-      context.moveTo(600, 120);
-      context.lineTo(700, 130);
-      context.lineTo(780, 170);
-      context.lineTo(750, 220);
-      context.lineTo(700, 260);
-      context.lineTo(600, 230);
-      context.lineTo(580, 180);
-      context.lineTo(600, 120);
+      context.moveTo(560, 115); // Russia west
+      context.lineTo(700, 120); // Russia east
+      context.lineTo(750, 150); // East Asia
+      context.lineTo(740, 180); // China east
+      context.lineTo(700, 210); // Southeast Asia
+      context.lineTo(670, 220); // India
+      context.lineTo(590, 200); // Middle East
+      context.lineTo(550, 150); // Eastern Europe
+      context.lineTo(560, 115); // Back to start
       context.fill();
       
-      // Australia
-      context.beginPath();
-      context.moveTo(780, 300);
-      context.lineTo(850, 320);
-      context.lineTo(830, 380);
-      context.lineTo(760, 370);
-      context.lineTo(780, 300);
+      // Add subtle highlight to Asia
+      const asiaHighlight = context.createLinearGradient(560, 115, 750, 220);
+      asiaHighlight.addColorStop(0, 'rgba(112, 119, 161, 0.1)');
+      asiaHighlight.addColorStop(1, 'rgba(246, 177, 122, 0.05)');
+      context.fillStyle = asiaHighlight;
       context.fill();
+      
+      context.fillStyle = continentGradient; // Reset fill style
+      
+      // Australia and Oceania
+      context.beginPath();
+      context.moveTo(800, 300); // Australia northwest
+      context.bezierCurveTo(830, 290, 860, 310, 870, 330); // Australia north and east coast
+      context.lineTo(850, 370); // Australia southeast
+      context.lineTo(820, 380); // Australia south
+      context.lineTo(800, 350); // Australia southwest
+      context.lineTo(800, 300); // Back to start
+      context.fill();
+      
+      // Add some small islands for Oceania
+      context.beginPath();
+      context.arc(785, 270, 5, 0, 2 * Math.PI); // Indonesia/Papua New Guinea
+      context.fill();
+      
+      context.beginPath();
+      context.arc(910, 320, 3, 0, 2 * Math.PI); // New Zealand
+      context.fill();
+      
+      // Add glow effect around the continents
+      context.shadowColor = 'rgba(112, 119, 161, 0.3)';
+      context.shadowBlur = 15;
+      context.shadowOffsetX = 0;
+      context.shadowOffsetY = 0;
+      
+      // Draw some major rivers and lakes for extra detail
+      context.strokeStyle = 'rgba(26, 26, 46, 0.7)';
+      context.lineWidth = 1.5;
+      
+      // Amazon River
+      context.beginPath();
+      context.moveTo(280, 340);
+      context.bezierCurveTo(300, 330, 320, 335, 330, 340);
+      context.stroke();
+      
+      // Nile River
+      context.beginPath();
+      context.moveTo(530, 230);
+      context.bezierCurveTo(535, 260, 540, 280, 540, 310);
+      context.stroke();
+      
+      // Clear shadow for future drawing
+      context.shadowColor = 'transparent';
+      context.shadowBlur = 0;
     }
     
     // Convert canvas to texture
