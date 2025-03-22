@@ -48,21 +48,19 @@ const PomodoroTimer: FC = () => {
   useEffect(() => {
     if (isRunning) {
       // Play begin sound when timer starts
-      if (prev => prev === timerSettings.focusTime * 60 || prev === timerSettings.breakTime * 60 || prev === timerSettings.longBreakTime * 60) {
-        const beginSound = new Audio('/attached_assets/begin.mp3');
-        beginSound.volume = alertVolume;
-        beginSound.play().catch(error => console.log('Error playing begin sound:', error));
-      }
+      const beginSound = new Audio('/attached_assets/begin.mp3');
+      beginSound.volume = alertVolume;
+      beginSound.play().catch(error => console.log('Error playing begin sound:', error));
       
       timerRef.current = window.setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
             // Timer completed
             // Play appropriate sound based on current timer type
-            let soundFile = '/attached_assets/breakstart.mp3'; // Default to break start
+            let soundFile = 'attached_assets/breakstart.mp3'; // Default to break start
             
             if (timerType !== 'focus') {
-              soundFile = '/attached_assets/breakend.mp3'; // Use break end when transitioning from break
+              soundFile = 'attached_assets/breakend.mp3'; // Use break end when transitioning from break
             }
             
             const audio = new Audio(soundFile);
@@ -138,7 +136,7 @@ const PomodoroTimer: FC = () => {
     
     // Play begin sound when starting the timer (not when pausing)
     if (!wasRunning) {
-      const beginSound = new Audio('/attached_assets/begin.mp3');
+      const beginSound = new Audio('attached_assets/begin.mp3');
       beginSound.volume = alertVolume;
       beginSound.play().catch(error => console.log('Error playing begin sound:', error));
     }
