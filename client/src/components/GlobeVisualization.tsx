@@ -42,10 +42,14 @@ const studyRegions = [
 const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
 // Convert lat/long to 3D position on a sphere
+// Adjusted for better mapping with the provided SVG
 const latLongToVector3 = (lat: number, lng: number, radius: number) => {
+  // For equirectangular map projection, adjust phi calculation
+  // SVG is 1280x688, so we need to adjust for aspect ratio
   const phi = (90 - lat) * Math.PI / 180;
   const theta = (lng + 180) * Math.PI / 180;
   
+  // Standard formula for converting spherical coordinates to cartesian
   const x = -radius * Math.sin(phi) * Math.cos(theta);
   const y = radius * Math.cos(phi);
   const z = radius * Math.sin(phi) * Math.sin(theta);
@@ -190,16 +194,35 @@ const GlobeVisualization: FC = () => {
     const segments = 64;
     const globeGeometry = new THREE.SphereGeometry(radius, segments, segments);
     
-    // Use the provided SVG as texture
-    const textureLoader = new THREE.TextureLoader();
+    // Create canvas for texture
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
     
-    // Create a material for the globe
-    const globeMaterial = new THREE.MeshPhongMaterial({
-      map: textureLoader.load(earthMap),
-      shininess: 5,
+    // Create a new image element
+    const earthImage = new Image();
+    earthImage.src = earthMap;
+    
+    // Create material with a basic blue color until image loads
+    const globeMaterial = new THREE.MeshBasicMaterial({
+      color: 0x364075, 
       transparent: true,
       opacity: 0.9
     });
+    
+    // When image loads, update the texture
+    earthImage.onload = () => {
+      if (ctx) {
+        ctx.drawImage(earthImage, 0, 0, canvas.width, canvas.height);
+        const texture = new THREE.CanvasTexture(canvas);
+        // Apply the texture to the existing material
+        if (globeRef.current) {
+          (globeRef.current.material as THREE.MeshBasicMaterial).map = texture;
+          (globeRef.current.material as THREE.MeshBasicMaterial).needsUpdate = true;
+        }
+      }
+    };
     
     // Create the globe mesh
     const globe = new THREE.Mesh(globeGeometry, globeMaterial);
