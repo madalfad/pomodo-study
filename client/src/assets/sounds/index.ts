@@ -1,4 +1,7 @@
 // Define the audio tracks available in the application
+import beginSound from './begin.mp3';
+import breakStartSound from './breakstart.mp3';
+import breakEndSound from './breakend.mp3';
 
 export interface AudioTrack {
   id: string;
@@ -29,13 +32,26 @@ export const audioTracks: AudioTrack[] = [
   }
 ];
 
+// Timer sound effects
+export const timerSounds = {
+  begin: beginSound,
+  breakStart: breakStartSound,
+  breakEnd: breakEndSound
+};
+
 // Initialize all audio tracks when this module is imported
 // This ensures that audio is ready to play when the user clicks
 import { initializeSound } from '../../lib/soundManager';
 
 // We place this in a setTimeout to prevent blocking the main thread during initial load
 setTimeout(() => {
+  // Initialize ambient tracks
   audioTracks.forEach(track => {
     initializeSound(track.id, track.url);
   });
+  
+  // Initialize timer sounds
+  initializeSound('timer-begin', timerSounds.begin);
+  initializeSound('timer-breakstart', timerSounds.breakStart);
+  initializeSound('timer-breakend', timerSounds.breakEnd);
 }, 100);
