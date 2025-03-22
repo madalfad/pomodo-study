@@ -65,45 +65,77 @@ const GlobeVisualization: FC = () => {
 
   // Generate user data
   const fetchUserLocations = async (): Promise<ActiveUser[]> => {
-    // Create predefined sample user with a nice color
-    const selfUser: ActiveUser = {
-      id: 'self',
-      lat: 37.7749, // San Francisco by default
-      lng: -122.4194,
-      timestamp: Date.now(),
-      color: '#F6B17A', // Warm orange for user
-      size: 0.018 // Larger size for user's location
-    };
+    // Create users array that will hold all our points
+    const users: ActiveUser[] = [];
     
     // Random number between 1000-1500 for active users count display
     const count = Math.floor(Math.random() * 500) + 1000;
     setActiveUsers(count);
     
-    // Initialize with predefined self
-    const users: ActiveUser[] = [selfUser];
-    
-    // Try to get client's actual location if possible
+    // First try native browser geolocation API for most accurate results
     try {
-      const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-      
-      if (permissionStatus.state === 'granted') {
-        // Use the browser's geolocation API
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
+      // Use browser's geolocation API directly, without permissions check
+      // (browser will handle permission UI if needed)
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve, 
+          reject, 
+          {
             timeout: 5000,
-            maximumAge: 300000 // 5 minutes
-          });
+            enableHighAccuracy: true,
+            maximumAge: 60000 // 1 minute
+          }
+        );
+      });
+      
+      // If we got coordinates, add user at their real location
+      if (position?.coords) {
+        users.push({
+          id: 'self',
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          timestamp: Date.now(),
+          color: '#F6B17A', // Warm orange for user
+          size: 0.018 // Larger size for user's location
         });
-        
-        // Update self user with actual location
-        if (position?.coords) {
-          selfUser.lat = position.coords.latitude;
-          selfUser.lng = position.coords.longitude;
-        }
+        console.log('Using browser geolocation:', position.coords.latitude, position.coords.longitude);
       }
     } catch (geoError) {
-      console.log('Geolocation not available:', geoError);
-      // Fallback is already handled with the default selfUser
+      console.log('Browser geolocation failed, falling back to IP geolocation');
+      
+      // Browser geolocation failed, try IP geolocation as fallback
+      try {
+        // Try freegeoip.app as alternative to ipapi.co
+        const response = await fetch('https://api.ipgeolocation.io/ipgeo?apiKey=API_KEY');
+        const data = await response.json();
+        
+        if (data.latitude && data.longitude) {
+          users.push({
+            id: 'self',
+            lat: parseFloat(data.latitude),
+            lng: parseFloat(data.longitude),
+            timestamp: Date.now(),
+            color: '#F6B17A', // Warm orange for user
+            size: 0.018 // Larger size for user's location
+          });
+          console.log('Using IP geolocation:', data.latitude, data.longitude);
+        } else {
+          throw new Error('IP geolocation did not return coordinates');
+        }
+      } catch (ipError) {
+        console.log('All geolocation methods failed, using default location');
+        
+        // All geolocation attempts failed, use default
+        users.push({
+          id: 'self',
+          // Default to London as a fallback
+          lat: 51.5074,
+          lng: -0.1278,
+          timestamp: Date.now(),
+          color: '#F6B17A', // Warm orange for user
+          size: 0.018 // Larger size for user's location
+        });
+      }
     }
     
     // Add major study regions as active points
@@ -198,132 +230,277 @@ const GlobeVisualization: FC = () => {
       
       context.fillStyle = continentGradient;
       
-      // Draw more accurate and detailed continents
+      // Draw highly detailed continents with realistic shapes
+
+      // Set main continent fill style with gradient
+      context.fillStyle = continentGradient;
       
-      // North America
+      // North America with detailed coastlines
       context.beginPath();
-      context.moveTo(170, 130); // Alaska
-      context.lineTo(220, 100); // Northern Canada
-      context.lineTo(260, 110); // Northern Canada
-      context.lineTo(320, 120); // Greenland
-      context.lineTo(300, 150); // Eastern Canada
-      context.lineTo(260, 150); // Central Canada
-      context.lineTo(240, 180); // USA East Coast
-      context.lineTo(200, 190); // USA West Coast
-      context.lineTo(180, 210); // Mexico
-      context.lineTo(200, 230); // Central America
-      context.lineTo(230, 250); // Panama
-      context.lineTo(180, 200); // Mexico West
-      context.lineTo(170, 160); // USA West
-      context.lineTo(170, 130); // Back to Alaska
+      // Alaska and Arctic
+      context.moveTo(150, 120);
+      context.bezierCurveTo(160, 110, 170, 105, 185, 100);
+      // Northern Canada & Greenland
+      context.bezierCurveTo(200, 90, 220, 85, 240, 90);
+      context.bezierCurveTo(260, 95, 290, 100, 310, 105);
+      context.bezierCurveTo(320, 110, 330, 120, 320, 130);
+      // Eastern Canada & US Atlantic Coast
+      context.bezierCurveTo(310, 140, 300, 150, 290, 155);
+      context.bezierCurveTo(280, 165, 270, 175, 260, 180);
+      // Gulf of Mexico & Caribbean
+      context.bezierCurveTo(250, 190, 240, 200, 230, 205);
+      context.bezierCurveTo(220, 210, 210, 215, 195, 220);
+      // Central America
+      context.bezierCurveTo(200, 230, 210, 240, 225, 250);
+      context.bezierCurveTo(225, 255, 235, 260, 240, 262);
+      // West coasts of Mexico & US
+      context.bezierCurveTo(230, 250, 215, 230, 190, 215);
+      context.bezierCurveTo(180, 200, 170, 180, 165, 165);
+      // Alaska Peninsula & Western Canada
+      context.bezierCurveTo(160, 150, 155, 140, 150, 130);
+      context.bezierCurveTo(145, 125, 148, 122, 150, 120);
+      context.closePath();
       context.fill();
       
-      // Add subtle highlight to North America
+      // Add highlights and details to North America
       const naHighlight = context.createLinearGradient(170, 100, 320, 250);
       naHighlight.addColorStop(0, 'rgba(112, 119, 161, 0.2)');
-      naHighlight.addColorStop(1, 'rgba(26, 26, 46, 0)');
+      naHighlight.addColorStop(1, 'rgba(246, 177, 122, 0.05)');
       context.fillStyle = naHighlight;
       context.fill();
       
-      context.fillStyle = continentGradient; // Reset fill style
-      
-      // South America
+      // Great Lakes
+      context.fillStyle = 'rgba(26, 26, 46, 0.7)';
       context.beginPath();
-      context.moveTo(245, 265); // Panama/Colombia border
-      context.bezierCurveTo(260, 290, 275, 310, 280, 340); // West coast curve
-      context.lineTo(270, 380); // Chile
-      context.lineTo(290, 420); // Argentina
-      context.lineTo(310, 400); // Brazil south
-      context.lineTo(330, 360); // Brazil east
-      context.lineTo(320, 300); // Brazil north
-      context.lineTo(290, 270); // Colombia/Venezuela
-      context.lineTo(245, 265); // Back to start
+      context.arc(270, 170, 5, 0, 2 * Math.PI);
       context.fill();
       
-      // Europe
+      // Reset fill style
+      context.fillStyle = continentGradient;
+      
+      // South America with accurate shape
       context.beginPath();
-      context.moveTo(490, 140); // Western Europe
-      context.lineTo(520, 120); // Scandinavia
-      context.lineTo(560, 115); // Russia west
-      context.lineTo(550, 150); // Eastern Europe
-      context.lineTo(520, 170); // Mediterranean
-      context.lineTo(490, 160); // Spain/Portugal
-      context.lineTo(490, 140); // Back to start
+      // Panama/Colombia border
+      context.moveTo(240, 262);
+      // West Coast (Colombia, Ecuador, Peru, Chile)
+      context.bezierCurveTo(245, 275, 250, 290, 255, 310);
+      context.bezierCurveTo(260, 330, 265, 350, 270, 370);
+      context.bezierCurveTo(275, 390, 280, 410, 285, 425);
+      // Southern tip (Cape Horn)
+      context.bezierCurveTo(290, 430, 295, 425, 300, 420);
+      // East Coast (Argentina, Uruguay, Brazil)
+      context.bezierCurveTo(310, 410, 320, 380, 325, 370);
+      context.bezierCurveTo(330, 350, 335, 330, 332, 310);
+      // Northern Brazil, Guianas, Venezuela
+      context.bezierCurveTo(325, 290, 315, 280, 305, 275);
+      context.bezierCurveTo(290, 270, 270, 265, 260, 260);
+      context.bezierCurveTo(250, 260, 245, 260, 240, 262);
+      context.closePath();
       context.fill();
       
-      // Africa
-      context.beginPath();
-      context.moveTo(500, 180); // Northwest Africa
-      context.lineTo(550, 190); // Northeast Africa
-      context.lineTo(580, 270); // East Africa
-      context.lineTo(550, 350); // South Africa
-      context.lineTo(510, 350); // Southwest Africa
-      context.lineTo(470, 270); // West Africa
-      context.lineTo(480, 200); // Northwest Africa
-      context.lineTo(500, 180); // Back to start
+      // Add Amazon Basin highlight
+      const amazonHighlight = context.createRadialGradient(300, 320, 5, 300, 320, 60);
+      amazonHighlight.addColorStop(0, 'rgba(26, 26, 46, 0.15)');
+      amazonHighlight.addColorStop(1, 'rgba(26, 26, 46, 0)');
+      context.fillStyle = amazonHighlight;
       context.fill();
       
-      // Asia
+      // Reset fill style
+      context.fillStyle = continentGradient;
+      
+      // Europe with detailed shape
       context.beginPath();
-      context.moveTo(560, 115); // Russia west
-      context.lineTo(700, 120); // Russia east
-      context.lineTo(750, 150); // East Asia
-      context.lineTo(740, 180); // China east
-      context.lineTo(700, 210); // Southeast Asia
-      context.lineTo(670, 220); // India
-      context.lineTo(590, 200); // Middle East
-      context.lineTo(550, 150); // Eastern Europe
-      context.lineTo(560, 115); // Back to start
+      // Western Europe & Iberian Peninsula
+      context.moveTo(475, 150);
+      context.bezierCurveTo(480, 145, 485, 140, 490, 138);
+      // UK, Scandinavia & Baltic
+      context.bezierCurveTo(500, 130, 510, 120, 520, 115);
+      context.bezierCurveTo(525, 110, 535, 108, 545, 110);
+      // Russia & Eastern Europe
+      context.bezierCurveTo(555, 115, 565, 125, 560, 135);
+      context.bezierCurveTo(555, 145, 550, 155, 545, 160);
+      // Mediterranean & Southern Europe
+      context.bezierCurveTo(535, 165, 525, 170, 515, 175);
+      context.bezierCurveTo(505, 170, 495, 165, 485, 160);
+      context.bezierCurveTo(480, 155, 475, 153, 475, 150);
+      context.closePath();
       context.fill();
       
-      // Add subtle highlight to Asia
+      // Mediterranean Sea details
+      context.strokeStyle = 'rgba(26, 26, 46, 0.4)';
+      context.beginPath();
+      context.moveTo(510, 175);
+      context.lineTo(540, 180);
+      context.stroke();
+      
+      // Reset fill style
+      context.fillStyle = continentGradient;
+      
+      // Africa with more realistic outline
+      context.beginPath();
+      // Northwest Africa (Morocco, Western Sahara)
+      context.moveTo(480, 180);
+      // North Africa (Mediterranean Coast)
+      context.bezierCurveTo(490, 180, 510, 185, 530, 185);
+      context.bezierCurveTo(540, 185, 550, 185, 560, 190);
+      // Horn of Africa (Somalia)
+      context.bezierCurveTo(570, 210, 580, 230, 585, 260);
+      // East Africa
+      context.bezierCurveTo(580, 280, 575, 300, 570, 320);
+      // Southern Africa
+      context.bezierCurveTo(565, 340, 555, 355, 545, 365);
+      context.bezierCurveTo(535, 370, 525, 365, 515, 360);
+      // West Africa
+      context.bezierCurveTo(500, 345, 490, 325, 480, 305);
+      context.bezierCurveTo(475, 285, 470, 260, 475, 235);
+      context.bezierCurveTo(475, 215, 478, 195, 480, 180);
+      context.closePath();
+      context.fill();
+      
+      // Add Sahara details
+      const saharaGradient = context.createLinearGradient(480, 200, 560, 240);
+      saharaGradient.addColorStop(0, 'rgba(246, 177, 122, 0.05)');
+      saharaGradient.addColorStop(1, 'rgba(26, 26, 46, 0.05)');
+      context.fillStyle = saharaGradient;
+      context.fill();
+      
+      // Reset fill style
+      context.fillStyle = continentGradient;
+      
+      // Asia with very detailed outline including subregions
+      context.beginPath();
+      // Russia & Siberia
+      context.moveTo(560, 110);
+      context.bezierCurveTo(580, 105, 620, 105, 660, 110);
+      context.bezierCurveTo(680, 110, 700, 115, 720, 120);
+      // East Asia (China, Korea, Japan)
+      context.bezierCurveTo(730, 130, 745, 145, 750, 160);
+      context.bezierCurveTo(748, 175, 742, 185, 735, 195);
+      // Southeast Asia (Vietnam, Thailand, Malaysia)
+      context.bezierCurveTo(730, 200, 725, 210, 715, 215);
+      context.bezierCurveTo(705, 220, 700, 225, 695, 230);
+      // India & South Asia
+      context.bezierCurveTo(685, 230, 675, 225, 665, 220);
+      context.bezierCurveTo(655, 215, 645, 210, 635, 205);
+      // Middle East & Western Asia
+      context.bezierCurveTo(620, 200, 610, 190, 600, 180);
+      context.bezierCurveTo(590, 170, 580, 160, 570, 150);
+      context.bezierCurveTo(565, 140, 562, 130, 560, 110);
+      context.closePath();
+      context.fill();
+      
+      // Add Himalayan mountain range detail
+      context.strokeStyle = 'rgba(246, 177, 122, 0.1)';
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(650, 180);
+      context.bezierCurveTo(660, 175, 670, 170, 690, 175);
+      context.stroke();
+      
+      // Add subtle highlights to Asia
       const asiaHighlight = context.createLinearGradient(560, 115, 750, 220);
-      asiaHighlight.addColorStop(0, 'rgba(112, 119, 161, 0.1)');
-      asiaHighlight.addColorStop(1, 'rgba(246, 177, 122, 0.05)');
+      asiaHighlight.addColorStop(0, 'rgba(112, 119, 161, 0.15)');
+      asiaHighlight.addColorStop(1, 'rgba(246, 177, 122, 0.1)');
       context.fillStyle = asiaHighlight;
       context.fill();
       
-      context.fillStyle = continentGradient; // Reset fill style
+      // Reset fill style
+      context.fillStyle = continentGradient;
       
-      // Australia and Oceania
+      // Australia and Oceania with more organic shape
       context.beginPath();
-      context.moveTo(800, 300); // Australia northwest
-      context.bezierCurveTo(830, 290, 860, 310, 870, 330); // Australia north and east coast
-      context.lineTo(850, 370); // Australia southeast
-      context.lineTo(820, 380); // Australia south
-      context.lineTo(800, 350); // Australia southwest
-      context.lineTo(800, 300); // Back to start
+      // Northwest Australia
+      context.moveTo(795, 305);
+      // Northern Australia
+      context.bezierCurveTo(805, 295, 820, 290, 835, 295);
+      // Northeast Australia (Queensland)
+      context.bezierCurveTo(850, 305, 860, 320, 865, 335);
+      // Southeast Australia
+      context.bezierCurveTo(860, 350, 850, 365, 835, 375);
+      // Southern Australia
+      context.bezierCurveTo(820, 380, 805, 375, 795, 365);
+      // Western Australia
+      context.bezierCurveTo(790, 350, 785, 335, 790, 320);
+      context.bezierCurveTo(790, 310, 792, 305, 795, 305);
+      context.closePath();
       context.fill();
       
-      // Add some small islands for Oceania
-      context.beginPath();
-      context.arc(785, 270, 5, 0, 2 * Math.PI); // Indonesia/Papua New Guinea
+      // Add interior desert details
+      const outbackGradient = context.createRadialGradient(825, 340, 10, 825, 340, 45);
+      outbackGradient.addColorStop(0, 'rgba(246, 177, 122, 0.07)');
+      outbackGradient.addColorStop(1, 'rgba(26, 26, 46, 0)');
+      context.fillStyle = outbackGradient;
       context.fill();
       
+      // Reset fill style
+      context.fillStyle = continentGradient;
+      
+      // Indonesia/Papua New Guinea
       context.beginPath();
-      context.arc(910, 320, 3, 0, 2 * Math.PI); // New Zealand
+      context.moveTo(760, 270);
+      context.bezierCurveTo(770, 265, 780, 265, 790, 270);
+      context.bezierCurveTo(795, 272, 800, 275, 795, 280);
+      context.bezierCurveTo(790, 282, 780, 280, 770, 278);
+      context.bezierCurveTo(765, 275, 760, 273, 760, 270);
+      context.closePath();
       context.fill();
       
-      // Add glow effect around the continents
-      context.shadowColor = 'rgba(112, 119, 161, 0.3)';
-      context.shadowBlur = 15;
+      // New Zealand (North & South Islands)
+      context.beginPath();
+      context.ellipse(905, 315, 8, 3, Math.PI / 4, 0, 2 * Math.PI);
+      context.fill();
+      context.beginPath();
+      context.ellipse(910, 325, 10, 4, Math.PI / 3, 0, 2 * Math.PI);
+      context.fill();
+      
+      // Japan islands
+      context.beginPath();
+      context.moveTo(760, 160);
+      context.bezierCurveTo(765, 155, 770, 150, 775, 155);
+      context.bezierCurveTo(773, 160, 770, 165, 765, 170);
+      context.bezierCurveTo(760, 165, 760, 162, 760, 160);
+      context.fill();
+      
+      // Add glow effect around all continents
+      context.shadowColor = 'rgba(112, 119, 161, 0.35)';
+      context.shadowBlur = 20;
       context.shadowOffsetX = 0;
       context.shadowOffsetY = 0;
       
-      // Draw some major rivers and lakes for extra detail
-      context.strokeStyle = 'rgba(26, 26, 46, 0.7)';
-      context.lineWidth = 1.5;
+      // Draw major rivers and lakes for extra detail
+      context.strokeStyle = 'rgba(26, 26, 46, 0.5)';
+      context.lineWidth = 1.3;
       
-      // Amazon River
+      // Amazon River with tributaries
       context.beginPath();
       context.moveTo(280, 340);
-      context.bezierCurveTo(300, 330, 320, 335, 330, 340);
+      context.bezierCurveTo(290, 335, 300, 333, 310, 335);
+      context.bezierCurveTo(320, 337, 330, 340, 325, 345);
+      context.stroke();
+      
+      // Tributary
+      context.beginPath();
+      context.moveTo(295, 330);
+      context.bezierCurveTo(298, 335, 300, 337, 305, 335);
       context.stroke();
       
       // Nile River
       context.beginPath();
       context.moveTo(530, 230);
-      context.bezierCurveTo(535, 260, 540, 280, 540, 310);
+      context.bezierCurveTo(535, 250, 538, 270, 540, 290);
+      context.bezierCurveTo(541, 300, 542, 310, 540, 320);
+      context.stroke();
+      
+      // Mississippi River
+      context.beginPath();
+      context.moveTo(240, 170);
+      context.bezierCurveTo(238, 180, 235, 190, 230, 200);
+      context.stroke();
+      
+      // Yangtze River
+      context.beginPath();
+      context.moveTo(710, 180);
+      context.bezierCurveTo(700, 182, 690, 185, 680, 187);
       context.stroke();
       
       // Clear shadow for future drawing
