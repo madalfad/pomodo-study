@@ -6,11 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { motion, AnimatePresence } from "framer-motion";
 import { playSound, preloadSound, initAudio } from "@/lib/simpleSoundPlayer";
-
-// Direct paths to sound files for more reliable playback
-const BEGIN_SOUND_URL = '/begin.mp3';
-const BREAK_START_SOUND_URL = '/breakstart.mp3';
-const BREAK_END_SOUND_URL = '/breakend.mp3';
+import TimerSounds from "@/assets/audio";
 
 interface PomodoroSettings {
   focusTime: number;
@@ -53,9 +49,9 @@ const PomodoroTimer: FC = () => {
   // Preload sounds on component mount
   useEffect(() => {
     console.log('Preloading timer sounds...');
-    preloadSound(BEGIN_SOUND_URL);
-    preloadSound(BREAK_START_SOUND_URL);
-    preloadSound(BREAK_END_SOUND_URL);
+    preloadSound(TimerSounds.begin);
+    preloadSound(TimerSounds.breakStart);
+    preloadSound(TimerSounds.breakEnd);
   }, []);
 
   useEffect(() => {
@@ -66,9 +62,9 @@ const PomodoroTimer: FC = () => {
             // Timer completed
             // Play appropriate sound based on current timer type
             if (timerType === 'focus') {
-              playTimerSound(BREAK_START_SOUND_URL, alertVolume);
+              playTimerSound(TimerSounds.breakStart, alertVolume);
             } else {
-              playTimerSound(BREAK_END_SOUND_URL, alertVolume);
+              playTimerSound(TimerSounds.breakEnd, alertVolume);
             }
             clearInterval(timerRef.current!);
 
@@ -146,7 +142,7 @@ const PomodoroTimer: FC = () => {
 
     // Play begin sound when starting the timer (not when pausing)
     if (!wasRunning) {
-      playTimerSound(BEGIN_SOUND_URL, alertVolume);
+      playTimerSound(TimerSounds.begin, alertVolume);
     }
   };
 
