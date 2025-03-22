@@ -17,10 +17,10 @@ const SoundMixer: FC = () => {
   const [videoSettings, setVideoSettings] = useLocalStorage<VideoSettings>("videoSettings", {
     musicUrl: "https://www.youtube.com/live/jfKfPfyJRdk?si=F4yVteKhSOk7OPJ8",
     ambienceUrl: "https://www.youtube.com/watch?v=uiMXGIG_DQo&ab_channel=WinterWhale",
-    musicWorkVolume: 50,
+    musicWorkVolume: 70,
     musicBreakVolume: 30,
-    ambienceWorkVolume: 40,
-    ambienceBreakVolume: 60
+    ambienceWorkVolume: 30,
+    ambienceBreakVolume: 70
   });
 
   useEffect(() => {
