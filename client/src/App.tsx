@@ -42,13 +42,11 @@ function AppContent() {
   const { darkMode } = useDarkMode();
   
   return (
-    <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`} style={{ 
-      fontFamily: "'Work Sans', sans-serif",
-    }}>
-      <DarkModeToggle />
+    <div className={`min-h-screen flex flex-col ${darkMode ? 'dark bg-background' : 'bg-background'}`}>
       <Header />
       <Router />
       <Footer />
+      <DarkModeToggle />
     </div>
   );
 }
