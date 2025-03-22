@@ -24,21 +24,78 @@ const GlobeVisualization: FC = () => {
   const markersRef = useRef<Array<THREE.Mesh>>([]);
   const animationFrameRef = useRef<number>();
 
-  // Generate simulated user data for the globe
-  const generateRandomUsers = (): ActiveUser[] => {
-    const users: ActiveUser[] = [];
-    const count = Math.floor(Math.random() * 500) + 1000; // 1000-1500 users
-    setActiveUsers(count);
-    
-    for (let i = 0; i < 25; i++) { // We'll only show 25 dots for performance
-      users.push({
-        id: `user-${i}`,
-        lat: (Math.random() * 180) - 90, // -90 to 90
-        lng: (Math.random() * 360) - 180, // -180 to 180
-        timestamp: Date.now()
-      });
+  // Generate user data from IP geolocation
+  const fetchUserLocations = async (): Promise<ActiveUser[]> => {
+    try {
+      // First get client's own IP location
+      const response = await fetch('https://ipapi.co/json/');
+      const data = await response.json();
+      
+      const users: ActiveUser[] = [];
+      const count = Math.floor(Math.random() * 500) + 1000; // Keep the count display as before
+      setActiveUsers(count);
+      
+      // Add user's own location if available
+      if (data.latitude && data.longitude) {
+        users.push({
+          id: 'self',
+          lat: data.latitude,
+          lng: data.longitude,
+          timestamp: Date.now()
+        });
+      }
+      
+      // Pre-defined major city coordinates to add realistic study locations
+      const majorCities = [
+        { lat: 40.7128, lng: -74.0060 }, // New York
+        { lat: 51.5074, lng: -0.1278 }, // London
+        { lat: 48.8566, lng: 2.3522 }, // Paris
+        { lat: 35.6762, lng: 139.6503 }, // Tokyo
+        { lat: 22.3193, lng: 114.1694 }, // Hong Kong
+        { lat: 19.0760, lng: 72.8777 }, // Mumbai
+        { lat: -33.8688, lng: 151.2093 }, // Sydney
+        { lat: -23.5505, lng: -46.6333 }, // São Paulo
+        { lat: 37.7749, lng: -122.4194 }, // San Francisco
+        { lat: 55.7558, lng: 37.6173 }, // Moscow
+        { lat: 52.5200, lng: 13.4050 }, // Berlin
+        { lat: 41.9028, lng: 12.4964 }, // Rome
+        { lat: 31.2304, lng: 121.4737 }, // Shanghai
+        { lat: -34.6037, lng: -58.3816 }, // Buenos Aires
+        { lat: 37.5665, lng: 126.9780 }, // Seoul
+        { lat: 25.2048, lng: 55.2708 }, // Dubai
+        { lat: 1.3521, lng: 103.8198 }, // Singapore
+        { lat: 59.3293, lng: 18.0686 }, // Stockholm
+        { lat: 30.0444, lng: 31.2357 }, // Cairo
+        { lat: -6.2088, lng: 106.8456 }, // Jakarta
+      ];
+      
+      // Add 24 major cities to make it 25 total points
+      for (let i = 0; i < Math.min(24, majorCities.length); i++) {
+        const city = majorCities[i];
+        users.push({
+          id: `city-${i}`,
+          lat: city.lat,
+          lng: city.lng,
+          timestamp: Date.now()
+        });
+      }
+      
+      return users;
+    } catch (error) {
+      console.error('Error fetching location data:', error);
+      
+      // Fallback to random data if IP geolocation fails
+      const users: ActiveUser[] = [];
+      for (let i = 0; i < 25; i++) {
+        users.push({
+          id: `user-${i}`,
+          lat: (Math.random() * 180) - 90,
+          lng: (Math.random() * 360) - 180,
+          timestamp: Date.now()
+        });
+      }
+      return users;
     }
-    return users;
   };
 
   // Convert lat/long to 3D position on a sphere
@@ -96,6 +153,75 @@ const GlobeVisualization: FC = () => {
     const globe = new THREE.Mesh(globeGeometry, globeMaterial);
     scene.add(globe as any);
     
+    // Add country outlines - Use THREE.Object3D as a generic container
+    const countryLines = new THREE.Object3D();
+    
+    // Simplified country boundaries as latitude/longitude line segments
+    const countries = [
+      // North America outline
+      [
+        [49, -125], [49, -95], [49, -65], 
+        [25, -80], [25, -100], [32, -120], [49, -125]
+      ],
+      // South America outline
+      [
+        [10, -80], [0, -50], [-20, -40], 
+        [-50, -70], [-40, -75], [10, -80]
+      ],
+      // Europe outline
+      [
+        [55, -10], [60, 20], [55, 40], 
+        [45, 10], [36, -5], [55, -10]
+      ],
+      // Africa outline
+      [
+        [30, -10], [30, 50], [0, 45], 
+        [-30, 30], [-35, 15], [0, -10], [30, -10]
+      ],
+      // Asia outline
+      [
+        [60, 40], [60, 140], [35, 140], 
+        [20, 100], [10, 70], [30, 50], [60, 40]
+      ],
+      // Australia outline
+      [
+        [-20, 115], [-20, 145], [-35, 150], 
+        [-35, 115], [-20, 115]
+      ],
+    ];
+    
+    countries.forEach(country => {
+      const vertices = [];
+      
+      // Convert country outline points to vectors and create lines between them
+      for (let i = 0; i < country.length; i++) {
+        const [lat, lng] = country[i];
+        const point = latLongToVector3(lat, lng, radius + 0.002);
+        vertices.push(point.x, point.y, point.z);
+      }
+      
+      // Use the basic built-in geometry and line
+      const geometry = new THREE.BufferGeometry();
+      
+      // Cast to any to work around TypeScript limitations
+      (geometry as any).setAttribute('position', new THREE.BufferAttribute(
+        new Float32Array(vertices), 3
+      ));
+      
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x7077A1,
+        transparent: true,
+        opacity: 0.5,
+        wireframe: true
+      });
+      
+      // Create a mesh with the line geometry
+      const line = new THREE.Mesh(geometry, material);
+      countryLines.add(line);
+    });
+    
+    scene.add(countryLines);
+    
     // Add a glow effect
     const glowGeometry = new THREE.SphereGeometry(radius * 1.01, segments, segments);
     const glowMaterial = new THREE.MeshBasicMaterial({
@@ -129,8 +255,8 @@ const GlobeVisualization: FC = () => {
     animate();
     
     // Update markers on interval
-    const updateMarkers = () => {
-      const users = generateRandomUsers();
+    const updateMarkers = async () => {
+      const users = await fetchUserLocations();
       
       // Clear existing markers
       if (markersRef.current.length > 0) {
@@ -142,11 +268,16 @@ const GlobeVisualization: FC = () => {
       users.forEach(user => {
         const position = latLongToVector3(user.lat, user.lng, radius + 0.01);
         
-        const markerGeometry = new THREE.SphereGeometry(0.01, 8, 8);
+        // Make user's own marker slightly larger and different color
+        const isOwnLocation = user.id === 'self';
+        const markerSize = isOwnLocation ? 0.015 : 0.01;
+        const markerColor = isOwnLocation ? 0xF6B17A : 0xF7F7F7;
+        
+        const markerGeometry = new THREE.SphereGeometry(markerSize, 8, 8);
         const markerMaterial = new THREE.MeshBasicMaterial({
-          color: 0xF6B17A,
+          color: markerColor,
           transparent: true,
-          opacity: 0.8
+          opacity: isOwnLocation ? 0.9 : 0.7
         });
         
         const marker = new THREE.Mesh(markerGeometry, markerMaterial);
