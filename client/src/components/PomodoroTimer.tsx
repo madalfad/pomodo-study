@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { motion, AnimatePresence } from "framer-motion";
-import { playSound, preloadSound } from "@/lib/simpleSoundPlayer";
+import { playSound, preloadSound, initAudio } from "@/lib/simpleSoundPlayer";
 
 // Direct paths to sound files for more reliable playback
 const BEGIN_SOUND_URL = '/begin.mp3';
@@ -103,6 +103,9 @@ const PomodoroTimer: FC = () => {
     let newDuration: number;
     let newCycle = currentCycle;
 
+    // Initialize audio context for sounds
+    initAudio();
+
     if (timerType === 'focus') {
       // After focus, go to break or long break
       if (currentCycle >= timerSettings.cyclesBeforeLongBreak) {
@@ -137,6 +140,9 @@ const PomodoroTimer: FC = () => {
   const startTimer = () => {
     const wasRunning = isRunning;
     setIsRunning(prev => !prev);
+
+    // Initialize audio context on user interaction
+    initAudio();
 
     // Play begin sound when starting the timer (not when pausing)
     if (!wasRunning) {
