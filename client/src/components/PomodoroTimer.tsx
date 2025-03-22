@@ -5,11 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { motion, AnimatePresence } from "framer-motion";
-import { playSound, initializeSound, setVolume } from "@/lib/soundManager";
-// Ensure the sound files are imported once
-import beginSoundFile from "@/assets/sounds/begin.mp3";
-import breakStartSoundFile from "@/assets/sounds/breakstart.mp3";
-import breakEndSoundFile from "@/assets/sounds/breakend.mp3";
+import { playSound, setVolume } from "@/lib/soundManager";
+// We'll use the sound IDs that are already initialized in the sound module
+import { timerSounds } from "@/assets/sounds";
 
 interface PomodoroSettings {
   focusTime: number;
@@ -41,8 +39,8 @@ const PomodoroTimer: FC = () => {
 
   // Sound IDs for the timer sounds
   const TIMER_BEGIN_SOUND = 'timer-begin';
-  const TIMER_BREAK_START_SOUND = 'timer-break-start';
-  const TIMER_BREAK_END_SOUND = 'timer-break-end';
+  const TIMER_BREAK_START_SOUND = 'timer-breakstart';
+  const TIMER_BREAK_END_SOUND = 'timer-breakend';
   
   // Function to play a sound using the soundManager
   const playTimerSound = (soundId: string, volume: number) => {
@@ -56,24 +54,14 @@ const PomodoroTimer: FC = () => {
       console.error(`Error playing timer sound ${soundId}:`, error);
     }
   };
-
-  // Initialize the sounds using the sound manager
+  
+  // Update the volume settings for the sounds whenever alertVolume changes
   useEffect(() => {
-    // Initialize all the sounds with the sound manager
-    console.log('Initializing timer sounds...');
-    
-    // Initialize the sounds with their respective files
-    initializeSound(TIMER_BEGIN_SOUND, beginSoundFile);
-    initializeSound(TIMER_BREAK_START_SOUND, breakStartSoundFile);
-    initializeSound(TIMER_BREAK_END_SOUND, breakEndSoundFile);
-    
-    // Set initial volumes
+    console.log('Setting alert volume:', alertVolume);
     setVolume(TIMER_BEGIN_SOUND, alertVolume);
     setVolume(TIMER_BREAK_START_SOUND, alertVolume);
     setVolume(TIMER_BREAK_END_SOUND, alertVolume);
-    
-    console.log('Timer sounds initialized successfully');
-  }, []);
+  }, [alertVolume]);
 
   useEffect(() => {
     if (isRunning) {
