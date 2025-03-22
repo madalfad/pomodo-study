@@ -47,14 +47,20 @@ const PomodoroTimer: FC = () => {
     }
     
     try {
+      const audio = audioRef.current;
+      console.log('Attempting to play audio from source:', audio.src);
+      
       // Set volume and play
-      audioRef.current.volume = volume;
+      audio.volume = volume;
       
       // Reset audio to start
-      audioRef.current.currentTime = 0;
+      audio.currentTime = 0;
       
-      // Play the audio with promise handling
-      const playPromise = audioRef.current.play();
+      // Try to load the audio explicitly
+      audio.load();
+      
+      // Play the audio with promise handling and retry logic
+      const playPromise = audio.play();
       
       // Modern browsers return a promise from the play method
       if (playPromise !== undefined) {
@@ -65,6 +71,15 @@ const PomodoroTimer: FC = () => {
           .catch(error => {
             // Auto-play was prevented or other error
             console.error('Error playing audio:', error);
+            
+            // Try once more after a short delay
+            setTimeout(() => {
+              console.log('Retrying audio playback...');
+              audio.load();
+              audio.play().catch(retryError => {
+                console.error('Retry failed:', retryError);
+              });
+            }, 500);
           });
       }
     } catch (error) {
@@ -74,29 +89,55 @@ const PomodoroTimer: FC = () => {
 
   // Initialize audio elements
   useEffect(() => {
-    // Create audio elements for each sound
-    beginSoundRef.current = new Audio('/attached_assets/begin.mp3');
-    breakStartSoundRef.current = new Audio('/attached_assets/breakstart.mp3');
-    breakEndSoundRef.current = new Audio('/attached_assets/breakend.mp3');
+    // Create audio elements for each sound - using paths relative to the public directory
+    beginSoundRef.current = new Audio('/begin.mp3');
+    breakStartSoundRef.current = new Audio('/breakstart.mp3');
+    breakEndSoundRef.current = new Audio('/breakend.mp3');
     
-    // Preload the audio files
-    if (beginSoundRef.current) {
-      beginSoundRef.current.preload = 'auto';
+    // Add event listeners for error handling
+    const beginAudio = beginSoundRef.current;
+    const breakStartAudio = breakStartSoundRef.current;
+    const breakEndAudio = breakEndSoundRef.current;
+    
+    const handleError = (e: ErrorEvent, soundName: string) => {
+      console.error(`Error loading ${soundName} sound:`, e);
+    };
+    
+    if (beginAudio) {
+      beginAudio.preload = 'auto';
+      beginAudio.addEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'begin'));
       console.log('Sound timer-begin initialized');
     }
     
-    if (breakStartSoundRef.current) {
-      breakStartSoundRef.current.preload = 'auto';
+    if (breakStartAudio) {
+      breakStartAudio.preload = 'auto';
+      breakStartAudio.addEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'breakstart'));
       console.log('Sound timer-breakstart initialized');
     }
     
-    if (breakEndSoundRef.current) {
-      breakEndSoundRef.current.preload = 'auto';
+    if (breakEndAudio) {
+      breakEndAudio.preload = 'auto';
+      breakEndAudio.addEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'breakend'));
       console.log('Sound timer-breakend initialized');
     }
     
+    // Test loading the sounds explicitly
+    console.log('Attempting to load audio files from paths:');
+    console.log('- begin:', beginAudio?.src);
+    console.log('- breakstart:', breakStartAudio?.src);
+    console.log('- breakend:', breakEndAudio?.src);
+    
     // Clean up function
     return () => {
+      if (beginAudio) {
+        beginAudio.removeEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'begin'));
+      }
+      if (breakStartAudio) {
+        breakStartAudio.removeEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'breakstart'));
+      }
+      if (breakEndAudio) {
+        breakEndAudio.removeEventListener('error', (e) => handleError(e as unknown as ErrorEvent, 'breakend'));
+      }
       beginSoundRef.current = null;
       breakStartSoundRef.current = null;
       breakEndSoundRef.current = null;
