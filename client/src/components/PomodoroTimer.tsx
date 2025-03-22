@@ -37,7 +37,7 @@ const PomodoroTimer: FC = () => {
   const timerRef = useRef<number | null>(null);
 
   // Function to play a timer sound using our simple player
-  const playTimerSound = (soundUrl: string, volume: number) => {
+  const playTimerSound = (soundUrl: any, volume: number) => {
     try {
       console.log(`Playing timer sound: ${soundUrl} at volume ${volume}`);
       playSound(soundUrl, volume);
