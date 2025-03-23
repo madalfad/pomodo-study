@@ -149,27 +149,51 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     }
   };
   
-  // For external Pomodoro timer to control volume
+  // For external Pomodoro timer to control volume with smooth transition
   useEffect(() => {
+    const animateVolumeChange = (
+      startVolume: number, 
+      targetVolume: number, 
+      duration: number = 1000
+    ) => {
+      const startTime = Date.now();
+      const volumeDiff = targetVolume - startVolume;
+      
+      const updateVolume = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Use easeInOutQuad for smoother transition
+        const eased = progress < 0.5 
+          ? 2 * progress * progress 
+          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+        
+        const newVolume = Math.round(startVolume + volumeDiff * eased);
+        
+        if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+          try {
+            playerRef.current.setVolume(newVolume);
+            setVolume(newVolume);
+          } catch (error) {
+            console.log('Error setting volume during animation:', error);
+          }
+        }
+        
+        if (progress < 1) {
+          requestAnimationFrame(updateVolume);
+        }
+      };
+      
+      requestAnimationFrame(updateVolume);
+    };
+    
     const handlePomodoroStateChange = (event: CustomEvent) => {
-      if (event.detail.timerType === 'focus') {
-        setVolume(initialVolume);
-        if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-          try {
-            playerRef.current.setVolume(initialVolume);
-          } catch (error) {
-            console.log('Error setting volume in pomodoro state change:', error);
-          }
-        }
-      } else {
-        setVolume(breakVolume);
-        if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-          try {
-            playerRef.current.setVolume(breakVolume);
-          } catch (error) {
-            console.log('Error setting volume in pomodoro state change:', error);
-          }
-        }
+      const currentVolume = volume;
+      const targetVolume = event.detail.timerType === 'focus' ? initialVolume : breakVolume;
+      
+      // Only animate if there's a change in volume
+      if (currentVolume !== targetVolume) {
+        animateVolumeChange(currentVolume, targetVolume);
       }
     };
     
@@ -178,7 +202,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     return () => {
       window.removeEventListener('pomodoroStateChange' as any, handlePomodoroStateChange);
     };
-  }, [initialVolume, breakVolume]);
+  }, [initialVolume, breakVolume, volume]);
   
   return (
     <div className="youtube-embed">
