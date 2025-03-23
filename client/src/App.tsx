@@ -9,8 +9,6 @@ import SoundMixer from "./components/SoundMixer";
 import GlobeVisualization from "./components/GlobeVisualization";
 import PomodoroTimer from "./components/PomodoroTimer";
 import ToDoList from "./components/ToDoList";
-import DarkModeToggle from "./components/DarkModeToggle";
-import { DarkModeProvider, useDarkMode } from "./contexts/DarkModeContext";
 
 function Home() {
   return (
@@ -38,26 +36,15 @@ function Router() {
   );
 }
 
-function AppContent() {
-  const { darkMode } = useDarkMode();
-  
-  return (
-    <div className={`min-h-screen flex flex-col ${darkMode ? 'dark bg-background' : 'bg-background'}`}>
-      <Header />
-      <Router />
-      <Footer />
-      <DarkModeToggle />
-    </div>
-  );
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <DarkModeProvider>
-        <AppContent />
-        <Toaster />
-      </DarkModeProvider>
+      <div className="min-h-screen flex flex-col dark bg-background">
+        <Header />
+        <Router />
+        <Footer />
+      </div>
+      <Toaster />
     </QueryClientProvider>
   );
 }

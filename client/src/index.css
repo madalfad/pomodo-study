@@ -6,28 +6,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 97%;
-    --foreground: 222 47% 11%;
-    
-    --primary: 222 47% 25%;
-    --primary-foreground: 0 0% 98%;
-    
-    --secondary: 240 17% 54%;
-    --secondary-foreground: 0 0% 98%;
-    
-    --accent: 25 82% 72%;
-    --accent-foreground: 222 47% 11%;
-    
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    
-    --border: 222 47% 11%;
-    --input: 222 47% 11%;
-    
-    --radius: 0.5rem;
-  }
-
-  .dark {
+    /* Dark mode by default */
     --background: 222 47% 11%;
     --foreground: 0 0% 97%;
     
@@ -45,6 +24,8 @@
     
     --border: 240 17% 54%;
     --input: 240 17% 54%;
+    
+    --radius: 0.75rem;
   }
 
   * {
