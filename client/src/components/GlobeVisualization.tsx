@@ -5,6 +5,10 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { motion } from "framer-motion";
 import earthMap from "@/assets/images/earth-map.svg";
 
+// Preload the earth map SVG texture
+const preloadedEarthMap = new Image();
+preloadedEarthMap.src = earthMap;
+
 interface ActiveUser {
   id: string;
   lat: number;
@@ -257,29 +261,25 @@ const GlobeVisualization: FC = () => {
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
     
-    // Create a new image element
-    const earthImage = new Image();
-    earthImage.src = earthMap;
-    
-    // Create material with a basic blue color until image loads
+    // Create material with a basic blue color
     const globeMaterial = new THREE.MeshBasicMaterial({
       color: 0x364075, 
       transparent: true,
       opacity: 0.9
     });
     
-    // When image loads, update the texture
-    earthImage.onload = () => {
-      if (ctx) {
-        ctx.drawImage(earthImage, 0, 0, canvas.width, canvas.height);
-        const texture = new THREE.CanvasTexture(canvas);
-        // Apply the texture to the existing material
-        if (globeRef.current) {
-          (globeRef.current.material as THREE.MeshBasicMaterial).map = texture;
-          (globeRef.current.material as THREE.MeshBasicMaterial).needsUpdate = true;
-        }
-      }
-    };
+    // Use the preloaded earth image
+    console.log("Using preloaded earth map for globe texture");
+    
+    // Apply texture immediately
+    if (ctx) {
+      // Draw the preloaded image to the canvas
+      ctx.drawImage(preloadedEarthMap, 0, 0, canvas.width, canvas.height);
+      const texture = new THREE.CanvasTexture(canvas);
+      // Apply the texture to the material
+      (globeMaterial as any).map = texture;
+      (globeMaterial as any).needsUpdate = true;
+    }
     
     // Create the globe mesh
     const globe = new THREE.Mesh(globeGeometry, globeMaterial);
