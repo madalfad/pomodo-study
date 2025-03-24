@@ -28,7 +28,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   const [videoId, setVideoId] = useState<string | null>(null);
   const [timerType, setTimerType] = useState<'focus' | 'break' | 'longBreak'>('focus');
   const playerRef = useRef<any>(null);
-  const fadeIntervalRef = useRef<any>(null);
+  const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Extract YouTube video ID from URL
   useEffect(() => {
