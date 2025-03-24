@@ -25,6 +25,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [volume, setVolume] = useState(initialVolume);
   const [videoId, setVideoId] = useState<string | null>(null);
+  const [timerType, setTimerType] = useState<'focus' | 'break' | 'longBreak'>('focus');
   const playerRef = useRef<any>(null);
   
   // Extract YouTube video ID from URL
@@ -189,7 +190,10 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     
     const handlePomodoroStateChange = (event: CustomEvent) => {
       const currentVolume = volume;
-      const targetVolume = event.detail.timerType === 'focus' ? initialVolume : breakVolume;
+      const newTimerType = event.detail.timerType;
+      setTimerType(newTimerType);
+      
+      const targetVolume = newTimerType === 'focus' ? initialVolume : breakVolume;
       
       // Only animate if there's a change in volume
       if (currentVolume !== targetVolume) {
@@ -248,7 +252,15 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               <label className="block text-xs text-gray-400 mb-1">Focus Volume</label>
               <Slider
                 value={[initialVolume]}
-                onValueChange={([newVolume]) => onVolumeChange(newVolume)}
+                onValueChange={([newVolume]) => {
+                  // Update work volume in parent component
+                  onVolumeChange(newVolume);
+                  // If we're currently in focus mode, also update the visible volume
+                  if (timerType === 'focus' && playerRef.current) {
+                    setVolume(newVolume);
+                    playerRef.current.setVolume(newVolume);
+                  }
+                }}
                 max={100}
                 step={1}
                 className="cursor-pointer"
@@ -263,10 +275,17 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               <Slider
                 value={[breakVolume]}
                 onValueChange={([newVolume]) => {
+                  // Dispatch event for parent component to update break volume
                   const event = new CustomEvent('breakVolumeChange', {
                     detail: { type: title.toLowerCase(), volume: newVolume }
                   });
                   window.dispatchEvent(event);
+                  
+                  // If we're currently in break mode, also update the visible volume
+                  if (timerType !== 'focus' && playerRef.current) {
+                    setVolume(newVolume);
+                    playerRef.current.setVolume(newVolume);
+                  }
                 }}
                 max={100}
                 step={1}
@@ -291,7 +310,27 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
         </div>
         <Slider
           value={[volume]}
-          onValueChange={([newVolume]) => setVolume(newVolume)}
+          onValueChange={([newVolume]) => {
+            setVolume(newVolume);
+            if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+              try {
+                playerRef.current.setVolume(newVolume);
+              } catch (error) {
+                console.log('Error setting volume:', error);
+              }
+            }
+            
+            // Update the appropriate volume based on current timer mode
+            if (timerType === 'focus') {
+              onVolumeChange(newVolume); // Update focus/work volume
+            } else {
+              // Update break volume through the event system
+              const event = new CustomEvent('breakVolumeChange', {
+                detail: { type: title.toLowerCase(), volume: newVolume }
+              });
+              window.dispatchEvent(event);
+            }
+          }}
           max={100}
           step={1}
           className="cursor-pointer"
