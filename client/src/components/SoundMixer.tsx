@@ -267,16 +267,97 @@ const SoundMixer: FC = () => {
       
       // Force player initialization in next render cycle
       setTimeout(() => {
-        console.log("Triggering manual players refresh after reset");
+        console.log("Triggering manual YouTube players rebuild after reset");
         
-        // Extract videoId from default URLs and reinitialize
+        // Create temporary player elements
+        if (musicContainer) {
+          const musicPlayerElement = document.createElement('div');
+          musicPlayerElement.id = 'youtube-player-music';
+          musicContainer.appendChild(musicPlayerElement);
+        }
+        
+        if (ambienceContainer) {
+          const ambiencePlayerElement = document.createElement('div');
+          ambiencePlayerElement.id = 'youtube-player-ambience';
+          ambienceContainer.appendChild(ambiencePlayerElement);
+        }
+        
+        // Extract videoId from default URLs
         const musicVideoId = extractVideoId(DEFAULT_SETTINGS.musicUrl);
         const ambienceVideoId = extractVideoId(DEFAULT_SETTINGS.ambienceUrl);
         
         console.log(`Extracted IDs for rebuild - Music: ${musicVideoId}, Ambience: ${ambienceVideoId}`);
         
-        // Force a complete refresh of the page to ensure players are properly rebuilt
-        window.location.reload();
+        // Initialize players if YouTube API is available
+        if (window.YT && window.YT.Player) {
+          // Initialize music player
+          if (musicVideoId && musicContainer) {
+            console.log("Rebuilding music player with default settings");
+            new window.YT.Player('youtube-player-music', {
+              height: '200',
+              width: '100%',
+              videoId: musicVideoId,
+              playerVars: {
+                autoplay: 1,
+                controls: 1,
+                rel: 0,
+                showinfo: 0,
+                mute: 0,
+                loop: 1,
+                enablejsapi: 1,
+                origin: window.location.origin,
+                playsinline: 1
+              },
+              events: {
+                onReady: (event: any) => {
+                  console.log("Music player rebuilt and ready");
+                  event.target.setVolume(DEFAULT_SETTINGS.musicWorkVolume);
+                  
+                  // Get video title and update state
+                  const videoTitle = event.target.getVideoData().title;
+                  if (videoTitle) {
+                    updateMusicTitle(videoTitle);
+                  }
+                }
+              }
+            });
+          }
+          
+          // Initialize ambience player
+          if (ambienceVideoId && ambienceContainer) {
+            console.log("Rebuilding ambience player with default settings");
+            new window.YT.Player('youtube-player-ambience', {
+              height: '200',
+              width: '100%',
+              videoId: ambienceVideoId,
+              playerVars: {
+                autoplay: 1,
+                controls: 1,
+                rel: 0,
+                showinfo: 0,
+                mute: 0,
+                loop: 1,
+                enablejsapi: 1,
+                origin: window.location.origin,
+                playsinline: 1
+              },
+              events: {
+                onReady: (event: any) => {
+                  console.log("Ambience player rebuilt and ready");
+                  event.target.setVolume(DEFAULT_SETTINGS.ambienceWorkVolume);
+                  
+                  // Get video title and update state
+                  const videoTitle = event.target.getVideoData().title;
+                  if (videoTitle) {
+                    updateAmbienceTitle(videoTitle);
+                  }
+                }
+              }
+            });
+          }
+        } else {
+          console.log("YouTube API not available, players will rebuild on their own");
+        }
       }, 100);
     }, 100);
   };
