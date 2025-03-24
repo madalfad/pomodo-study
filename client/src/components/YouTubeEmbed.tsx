@@ -670,6 +670,9 @@ declare global {
             showinfo: number;
             mute: number;
             loop: number;
+            enablejsapi?: number;
+            origin?: string;
+            playsinline?: number;
           };
           events: {
             onReady: (event: { target: any }) => void;
@@ -680,6 +683,7 @@ declare global {
         setVolume: (volume: number) => void;
         getDuration: () => number;
         seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+        getVideoData: () => { title: string };
       };
     };
     onYouTubeIframeAPIReady: () => void;

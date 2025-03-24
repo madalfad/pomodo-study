@@ -74,6 +74,43 @@ interface VideoSettings {
   ambienceTitle?: string;
 }
 
+// Type declaration for YouTube IFrame API
+declare global {
+  interface Window {
+    YT: {
+      Player: new (
+        elementId: string,
+        config: {
+          height: string;
+          width: string;
+          videoId: string;
+          playerVars: {
+            autoplay: number;
+            controls: number;
+            rel: number;
+            showinfo: number;
+            mute: number;
+            loop: number;
+            enablejsapi?: number;
+            origin?: string;
+            playsinline?: number;
+          };
+          events: {
+            onReady: (event: { target: any }) => void;
+          };
+        }
+      ) => {
+        destroy: () => void;
+        setVolume: (volume: number) => void;
+        getDuration: () => number;
+        seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+        getVideoData: () => { title: string };
+      };
+    };
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
 const SoundMixer: FC = () => {
   const [videoSettings, setVideoSettings] = useLocalStorage<VideoSettings>(
     "videoSettings", 
