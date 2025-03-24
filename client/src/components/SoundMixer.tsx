@@ -6,8 +6,8 @@ import { motion } from "framer-motion";
 
 // Default settings
 const DEFAULT_SETTINGS = {
-  musicUrl: "https://www.youtube.com/live/jfKfPfyJRdk?si=F4yVteKhSOk7OPJ8",
-  ambienceUrl: "https://www.youtube.com/watch?v=uiMXGIG_DQo&ab_channel=WinterWhale",
+  musicUrl: "https://youtu.be/jfKfPfyJRdk",
+  ambienceUrl: "https://youtu.be/0QKdqm5TX6c",
   musicWorkVolume: 70,
   musicBreakVolume: 30,
   ambienceWorkVolume: 30,
@@ -77,29 +77,60 @@ const SoundMixer: FC = () => {
     }));
   };
 
-  // Reset music settings to defaults
+  // Reset music settings to defaults with force rebuild
   const resetMusicSettings = () => {
+    // First clear the music URL to trigger a full rebuild
     setVideoSettings(prev => ({
       ...prev,
-      musicUrl: DEFAULT_SETTINGS.musicUrl,
-      musicWorkVolume: DEFAULT_SETTINGS.musicWorkVolume,
-      musicBreakVolume: DEFAULT_SETTINGS.musicBreakVolume
+      musicUrl: ''
     }));
+    
+    // Then apply the actual defaults after a short delay
+    setTimeout(() => {
+      setVideoSettings(prev => ({
+        ...prev,
+        musicUrl: DEFAULT_SETTINGS.musicUrl,
+        musicWorkVolume: DEFAULT_SETTINGS.musicWorkVolume,
+        musicBreakVolume: DEFAULT_SETTINGS.musicBreakVolume
+      }));
+      console.log("Music settings reset to defaults");
+    }, 100);
   };
 
-  // Reset ambience settings to defaults
+  // Reset ambience settings to defaults with force rebuild
   const resetAmbienceSettings = () => {
+    // First clear the ambience URL to trigger a full rebuild
     setVideoSettings(prev => ({
       ...prev,
-      ambienceUrl: DEFAULT_SETTINGS.ambienceUrl,
-      ambienceWorkVolume: DEFAULT_SETTINGS.ambienceWorkVolume,
-      ambienceBreakVolume: DEFAULT_SETTINGS.ambienceBreakVolume
+      ambienceUrl: ''
     }));
+    
+    // Then apply the actual defaults after a short delay
+    setTimeout(() => {
+      setVideoSettings(prev => ({
+        ...prev,
+        ambienceUrl: DEFAULT_SETTINGS.ambienceUrl,
+        ambienceWorkVolume: DEFAULT_SETTINGS.ambienceWorkVolume,
+        ambienceBreakVolume: DEFAULT_SETTINGS.ambienceBreakVolume
+      }));
+      console.log("Ambience settings reset to defaults");
+    }, 100);
   };
 
-  // Reset all settings
+  // Reset all settings and force player rebuilds
   const resetAllSettings = () => {
-    setVideoSettings(DEFAULT_SETTINGS);
+    // First clear the URL values to trigger a full rebuild
+    setVideoSettings(prev => ({
+      ...prev,
+      musicUrl: '',
+      ambienceUrl: ''
+    }));
+    
+    // Then after a short delay, apply the actual defaults 
+    setTimeout(() => {
+      setVideoSettings(DEFAULT_SETTINGS);
+      console.log("All settings reset to defaults with new YouTube URLs");
+    }, 100);
   };
 
   return (
@@ -145,8 +176,20 @@ const SoundMixer: FC = () => {
             </div>
           </div>
           
-          <div className="mt-6 text-center text-sm text-gray-400">
-            <p>The YouTube embeds will automatically adjust volume when your Pomodoro timer switches between focus and break.</p>
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-400 mb-3">
+              The YouTube embeds will automatically adjust volume when your Pomodoro timer switches between focus and break.
+            </p>
+            
+            <button 
+              onClick={resetAllSettings}
+              className="inline-flex items-center text-xs text-amber-400 hover:text-amber-500 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Reset All to YouTube Defaults
+            </button>
           </div>
         </CardContent>
       </Card>

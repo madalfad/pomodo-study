@@ -85,13 +85,14 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
           return channelLiveMatch[1];
         }
         
-        // Short URL format (youtu.be/VIDEO_ID)
+        // Short URL format (youtu.be/VIDEO_ID) - more permissive matching
         const shortUrlRegExp = /^.*youtu\.be\/([^#\&\?]*).*/;
         const shortUrlMatch = url.match(shortUrlRegExp);
         
-        if (shortUrlMatch && shortUrlMatch[1] && shortUrlMatch[1].length === 11) {
-          console.log(`Extracted short URL video ID: ${shortUrlMatch[1]}`);
-          return shortUrlMatch[1];
+        if (shortUrlMatch && shortUrlMatch[1]) {
+          const videoId = shortUrlMatch[1].split('?')[0].split('/')[0]; // Remove any additional path or query params
+          console.log(`Extracted short URL video ID: ${videoId}`);
+          return videoId;
         }
         
         console.log('No video ID found in URL:', url);
