@@ -2,23 +2,28 @@ import { FC, useState, useEffect, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { RefreshCcw } from 'lucide-react';
 
 interface YouTubeEmbedProps {
   defaultUrl: string;
   title: string;
   onVolumeChange: (volume: number) => void;
+  onBreakVolumeChange: (volume: number) => void;
   initialVolume: number;
   breakVolume: number;
   onVideoChange: (url: string) => void;
+  onReset?: () => void; // Make optional to avoid errors
 }
 
 const YouTubeEmbed: FC<YouTubeEmbedProps> = ({ 
   defaultUrl, 
   title, 
   onVolumeChange, 
+  onBreakVolumeChange,
   initialVolume,
   breakVolume,
-  onVideoChange
+  onVideoChange,
+  onReset
 }) => {
   const [url, setUrl] = useState(defaultUrl);
   const [inputUrl, setInputUrl] = useState(defaultUrl);
@@ -52,6 +57,11 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     const id = extractVideoId(url);
     setVideoId(id);
   }, [url]);
+  
+  // Make sure volume state syncs with props
+  useEffect(() => {
+    setVolume(initialVolume);
+  }, [initialVolume]);
   
   // Load YouTube API
   useEffect(() => {
@@ -136,9 +146,18 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
         console.log('Error setting volume:', error);
       }
     }
-    
-    onVolumeChange(volume);
-  }, [volume, onVolumeChange]);
+  }, [volume]);
+  
+  // Handle slider volume change
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    onVolumeChange(newVolume);
+  };
+  
+  // Handle break volume change
+  const handleBreakVolumeChange = (newVolume: number) => {
+    onBreakVolumeChange(newVolume);
+  };
   
   // Update URL and reinitialize player
   const handleUrlChange = () => {
@@ -147,6 +166,14 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       onVideoChange(inputUrl);
       setShowUrlInput(false);
     }
+  };
+  
+  // Reset to default values
+  const handleReset = () => {
+    if (onReset) {
+      onReset();
+    }
+    setShowUrlInput(false);
   };
   
   // For external Pomodoro timer to control volume
@@ -198,7 +225,18 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       
       {showUrlInput && (
         <div className="mb-3 bg-gray-700 p-4 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-200 mb-3">Settings</h4>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-sm font-medium text-gray-200">Settings</h4>
+            <Button 
+              onClick={handleReset}
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center gap-1 text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
+            >
+              <RefreshCcw className="h-3 w-3" />
+              Reset defaults
+            </Button>
+          </div>
           
           <div className="mb-4">
             <label className="block text-xs text-gray-400 mb-1">YouTube URL</label>
@@ -224,7 +262,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               <label className="block text-xs text-gray-400 mb-1">Focus Volume</label>
               <Slider
                 value={[initialVolume]}
-                onValueChange={([newVolume]) => onVolumeChange(newVolume)}
+                onValueChange={([newVolume]) => handleVolumeChange(newVolume)}
                 max={100}
                 step={1}
                 className="cursor-pointer"
@@ -238,12 +276,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               <label className="block text-xs text-gray-400 mb-1">Break Volume</label>
               <Slider
                 value={[breakVolume]}
-                onValueChange={([newVolume]) => {
-                  const event = new CustomEvent('breakVolumeChange', {
-                    detail: { type: title.toLowerCase(), volume: newVolume }
-                  });
-                  window.dispatchEvent(event);
-                }}
+                onValueChange={([newVolume]) => handleBreakVolumeChange(newVolume)}
                 max={100}
                 step={1}
                 className="cursor-pointer"

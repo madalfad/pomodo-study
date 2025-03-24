@@ -1,8 +1,18 @@
-import { FC, useState, useEffect } from "react";
+import { FC } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import YouTubeEmbed from "./YouTubeEmbed";
 import { motion } from "framer-motion";
+
+// Default settings
+const DEFAULT_SETTINGS = {
+  musicUrl: "https://www.youtube.com/live/jfKfPfyJRdk?si=F4yVteKhSOk7OPJ8",
+  ambienceUrl: "https://www.youtube.com/watch?v=uiMXGIG_DQo&ab_channel=WinterWhale",
+  musicWorkVolume: 70,
+  musicBreakVolume: 30,
+  ambienceWorkVolume: 30,
+  ambienceBreakVolume: 70
+};
 
 interface VideoSettings {
   musicUrl: string;
@@ -14,39 +24,12 @@ interface VideoSettings {
 }
 
 const SoundMixer: FC = () => {
-  const [videoSettings, setVideoSettings] = useLocalStorage<VideoSettings>("videoSettings", {
-    musicUrl: "https://www.youtube.com/live/jfKfPfyJRdk?si=F4yVteKhSOk7OPJ8",
-    ambienceUrl: "https://www.youtube.com/watch?v=uiMXGIG_DQo&ab_channel=WinterWhale",
-    musicWorkVolume: 70,
-    musicBreakVolume: 30,
-    ambienceWorkVolume: 30,
-    ambienceBreakVolume: 70
-  });
+  const [videoSettings, setVideoSettings] = useLocalStorage<VideoSettings>(
+    "videoSettings", 
+    DEFAULT_SETTINGS
+  );
 
-  useEffect(() => {
-    const handleBreakVolumeChange = (event: CustomEvent) => {
-      const { type, volume } = event.detail;
-      
-      if (type === 'music') {
-        setVideoSettings(prev => ({
-          ...prev,
-          musicBreakVolume: volume
-        }));
-      } else if (type === 'ambience') {
-        setVideoSettings(prev => ({
-          ...prev,
-          ambienceBreakVolume: volume
-        }));
-      }
-    };
-    
-    window.addEventListener('breakVolumeChange' as any, handleBreakVolumeChange);
-    
-    return () => {
-      window.removeEventListener('breakVolumeChange' as any, handleBreakVolumeChange);
-    };
-  }, [setVideoSettings]);
-
+  // Update music focus volume
   const updateMusicVolume = (volume: number) => {
     setVideoSettings(prev => ({
       ...prev,
@@ -54,6 +37,7 @@ const SoundMixer: FC = () => {
     }));
   };
 
+  // Update music break volume
   const updateMusicBreakVolume = (volume: number) => {
     setVideoSettings(prev => ({
       ...prev,
@@ -61,6 +45,7 @@ const SoundMixer: FC = () => {
     }));
   };
 
+  // Update ambience focus volume
   const updateAmbienceVolume = (volume: number) => {
     setVideoSettings(prev => ({
       ...prev,
@@ -68,6 +53,7 @@ const SoundMixer: FC = () => {
     }));
   };
 
+  // Update ambience break volume
   const updateAmbienceBreakVolume = (volume: number) => {
     setVideoSettings(prev => ({
       ...prev,
@@ -75,6 +61,7 @@ const SoundMixer: FC = () => {
     }));
   };
 
+  // Update music URL
   const updateMusicUrl = (url: string) => {
     setVideoSettings(prev => ({
       ...prev,
@@ -82,11 +69,37 @@ const SoundMixer: FC = () => {
     }));
   };
 
+  // Update ambience URL
   const updateAmbienceUrl = (url: string) => {
     setVideoSettings(prev => ({
       ...prev,
       ambienceUrl: url
     }));
+  };
+
+  // Reset music settings to defaults
+  const resetMusicSettings = () => {
+    setVideoSettings(prev => ({
+      ...prev,
+      musicUrl: DEFAULT_SETTINGS.musicUrl,
+      musicWorkVolume: DEFAULT_SETTINGS.musicWorkVolume,
+      musicBreakVolume: DEFAULT_SETTINGS.musicBreakVolume
+    }));
+  };
+
+  // Reset ambience settings to defaults
+  const resetAmbienceSettings = () => {
+    setVideoSettings(prev => ({
+      ...prev,
+      ambienceUrl: DEFAULT_SETTINGS.ambienceUrl,
+      ambienceWorkVolume: DEFAULT_SETTINGS.ambienceWorkVolume,
+      ambienceBreakVolume: DEFAULT_SETTINGS.ambienceBreakVolume
+    }));
+  };
+
+  // Reset all settings
+  const resetAllSettings = () => {
+    setVideoSettings(DEFAULT_SETTINGS);
   };
 
   return (
@@ -110,9 +123,11 @@ const SoundMixer: FC = () => {
                 defaultUrl={videoSettings.musicUrl}
                 title="Music"
                 onVolumeChange={updateMusicVolume}
+                onBreakVolumeChange={updateMusicBreakVolume}
                 initialVolume={videoSettings.musicWorkVolume}
                 breakVolume={videoSettings.musicBreakVolume}
                 onVideoChange={updateMusicUrl}
+                onReset={resetMusicSettings}
               />
             </div>
             
@@ -121,9 +136,11 @@ const SoundMixer: FC = () => {
                 defaultUrl={videoSettings.ambienceUrl}
                 title="Ambience"
                 onVolumeChange={updateAmbienceVolume}
+                onBreakVolumeChange={updateAmbienceBreakVolume}
                 initialVolume={videoSettings.ambienceWorkVolume}
                 breakVolume={videoSettings.ambienceBreakVolume}
                 onVideoChange={updateAmbienceUrl}
+                onReset={resetAmbienceSettings}
               />
             </div>
           </div>
