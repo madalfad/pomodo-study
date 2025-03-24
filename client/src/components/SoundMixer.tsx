@@ -224,6 +224,117 @@ const SoundMixer: FC = () => {
     }, 100);
   };
 
+  // Refresh the video players without changing any settings
+  const refreshVideos = () => {
+    console.log("Refreshing YouTube players with current settings");
+    
+    // Clean up existing players
+    const musicContainer = document.getElementById('youtube-container-music');
+    const ambienceContainer = document.getElementById('youtube-container-ambience');
+    
+    // Clear containers to ensure fresh rebuild
+    if (musicContainer) {
+      musicContainer.innerHTML = '';
+      console.log("Cleared music container for refresh");
+    }
+    
+    if (ambienceContainer) {
+      ambienceContainer.innerHTML = '';
+      console.log("Cleared ambience container for refresh");
+    }
+    
+    // Short delay to ensure DOM is updated
+    setTimeout(() => {
+      // Create temporary player elements
+      if (musicContainer) {
+        const musicPlayerElement = document.createElement('div');
+        musicPlayerElement.id = 'youtube-player-music';
+        musicContainer.appendChild(musicPlayerElement);
+      }
+      
+      if (ambienceContainer) {
+        const ambiencePlayerElement = document.createElement('div');
+        ambiencePlayerElement.id = 'youtube-player-ambience';
+        ambienceContainer.appendChild(ambiencePlayerElement);
+      }
+      
+      // Extract videoId from current URLs
+      const musicVideoId = extractVideoId(videoSettings.musicUrl);
+      const ambienceVideoId = extractVideoId(videoSettings.ambienceUrl);
+      
+      console.log(`Extracted current IDs for refresh - Music: ${musicVideoId}, Ambience: ${ambienceVideoId}`);
+      
+      // Initialize players if YouTube API is available
+      if (window.YT && window.YT.Player) {
+        // Initialize music player
+        if (musicVideoId && musicContainer) {
+          console.log("Refreshing music player with current settings");
+          new window.YT.Player('youtube-player-music', {
+            height: '200',
+            width: '100%',
+            videoId: musicVideoId,
+            playerVars: {
+              autoplay: 1,
+              controls: 1,
+              rel: 0,
+              showinfo: 0,
+              mute: 0,
+              loop: 1,
+              origin: window.location.origin,
+              playsinline: 1
+            },
+            events: {
+              onReady: (event: any) => {
+                console.log("Music player refreshed and ready");
+                event.target.setVolume(videoSettings.musicWorkVolume);
+                
+                // Get video title and update state
+                const videoTitle = event.target.getVideoData().title;
+                if (videoTitle) {
+                  updateMusicTitle(videoTitle);
+                }
+              }
+            }
+          });
+        }
+        
+        // Initialize ambience player
+        if (ambienceVideoId && ambienceContainer) {
+          console.log("Refreshing ambience player with current settings");
+          new window.YT.Player('youtube-player-ambience', {
+            height: '200',
+            width: '100%',
+            videoId: ambienceVideoId,
+            playerVars: {
+              autoplay: 1,
+              controls: 1,
+              rel: 0,
+              showinfo: 0,
+              mute: 0,
+              loop: 1,
+              origin: window.location.origin,
+              playsinline: 1
+            },
+            events: {
+              onReady: (event: any) => {
+                console.log("Ambience player refreshed and ready");
+                event.target.setVolume(videoSettings.ambienceWorkVolume);
+                
+                // Get video title and update state
+                const videoTitle = event.target.getVideoData().title;
+                if (videoTitle) {
+                  updateAmbienceTitle(videoTitle);
+                }
+              }
+            }
+          });
+        }
+      } else {
+        console.log("YouTube API not available, players cannot be refreshed");
+      }
+    }, 100);
+  };
+  
   // Reset all settings and force player rebuilds
   const resetAllSettings = () => {
     console.log("Performing complete reset of all sound mixer settings");
@@ -304,7 +415,6 @@ const SoundMixer: FC = () => {
                 showinfo: 0,
                 mute: 0,
                 loop: 1,
-                enablejsapi: 1,
                 origin: window.location.origin,
                 playsinline: 1
               },
@@ -337,7 +447,6 @@ const SoundMixer: FC = () => {
                 showinfo: 0,
                 mute: 0,
                 loop: 1,
-                enablejsapi: 1,
                 origin: window.location.origin,
                 playsinline: 1
               },
@@ -414,6 +523,19 @@ const SoundMixer: FC = () => {
             
             <div className="flex flex-col items-center gap-2">
               <button 
+                onClick={refreshVideos}
+                className="inline-flex items-center text-xs text-amber-400 hover:text-amber-500 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh Videos
+              </button>
+              <div className="text-xs text-gray-500 max-w-md">
+                Music: {videoSettings.musicTitle || "Loading video title..."}<br/>
+                Ambience: {videoSettings.ambienceTitle || "Loading video title..."}
+              </div>
+              <button 
                 onClick={resetAllSettings}
                 className="inline-flex items-center text-xs text-amber-400 hover:text-amber-500 transition-colors"
               >
@@ -422,10 +544,6 @@ const SoundMixer: FC = () => {
                 </svg>
                 Reset All to Defaults
               </button>
-              <div className="text-xs text-gray-500 max-w-md">
-                Music: {videoSettings.musicTitle || "Loading video title..."}<br/>
-                Ambience: {videoSettings.ambienceTitle || "Loading video title..."}
-              </div>
             </div>
           </div>
         </CardContent>
