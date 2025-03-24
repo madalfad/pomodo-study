@@ -366,18 +366,72 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   
   // Update URL and reinitialize player
   const handleUrlChange = () => {
-    if (inputUrl !== url) {
-      setUrl(inputUrl);
-      onVideoChange(inputUrl);
-      setShowUrlInput(false);
+    // Force player refresh even if URL hasn't changed
+    // This helps when a video fails to load initially
+    console.log(`Updating ${title} YouTube URL to: ${inputUrl}`);
+    
+    // Store current player for cleanup
+    const oldPlayer = playerRef.current;
+    
+    // Clean up existing player immediately
+    if (oldPlayer) {
+      try {
+        console.log(`Destroying existing ${title} player before URL update`);
+        oldPlayer.destroy();
+        playerRef.current = null;
+      } catch (error) {
+        console.error(`Error destroying ${title} player:`, error);
+      }
     }
+    
+    // Update the URL
+    setUrl(inputUrl);
+    onVideoChange(inputUrl);
+    
+    // Force videoId extraction and player initialization in next render cycle
+    setTimeout(() => {
+      console.log(`Triggering manual player refresh for ${title}`);
+      if (videoId) {
+        initializePlayer();
+      }
+    }, 100);
+    
+    // Close settings panel
+    setShowUrlInput(false);
   };
   
-  // Reset to default values
+  // Reset to default values and force player refresh
   const handleReset = () => {
+    console.log(`Resetting ${title} YouTube settings to defaults`);
+    
+    // Clean up existing player first
+    if (playerRef.current) {
+      try {
+        console.log(`Destroying existing ${title} player for reset`);
+        playerRef.current.destroy();
+        playerRef.current = null;
+      } catch (error) {
+        console.error(`Error destroying ${title} player during reset:`, error);
+      }
+    }
+    
+    // Reset to default values via parent callback
     if (onReset) {
       onReset();
     }
+    
+    // Update the input URL field in case it was changed but not applied
+    setInputUrl(defaultUrl);
+    
+    // Force a player refresh after a short delay to ensure defaults are loaded
+    setTimeout(() => {
+      console.log(`Forcing player refresh after reset for ${title}`);
+      if (videoId) {
+        initializePlayer();
+      }
+    }, 100);
+    
+    // Close settings panel
     setShowUrlInput(false);
   };
   
