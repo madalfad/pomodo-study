@@ -286,8 +286,13 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
           typeof playerRef.current.setVolume === 'function' ? 
           playerRef.current.getVolume?.() : volume;
           
-        // Force a different value for transitionRef to ensure transition works
-        transitionRef.current.startVolume = currentVol || breakVolume;
+        // Force different start volumes based on player type (music vs ambience)
+        // Use the opposite of target volume to ensure transition happens
+        if (title === 'Music') {
+          transitionRef.current.startVolume = breakVolume; // Use break volume as start when going to focus
+        } else {
+          transitionRef.current.startVolume = initialVolume; // For ambience, use focus volume as start
+        }
         transitionRef.current.forceStartVolume = true;
         
         // Smooth transition to focus volume
@@ -299,8 +304,13 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
           typeof playerRef.current.setVolume === 'function' ? 
           playerRef.current.getVolume?.() : volume;
           
-        // Force a different value for transitionRef to ensure transition works
-        transitionRef.current.startVolume = currentVol || initialVolume;
+        // Force different start volumes based on player type
+        // Use the opposite of target volume to ensure transition happens
+        if (title === 'Music') {
+          transitionRef.current.startVolume = initialVolume; // Use focus volume as start when going to break
+        } else {
+          transitionRef.current.startVolume = breakVolume; // For ambience, use break volume as start
+        }
         transitionRef.current.forceStartVolume = true;
         
         // Smooth transition to break volume
