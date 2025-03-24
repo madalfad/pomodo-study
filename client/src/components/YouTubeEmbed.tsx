@@ -227,9 +227,29 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               // Store the player instance directly for easier access
               playerRef.current = event.target;
               
-              // Set initial volume
-              playerRef.current.setVolume(volume);
-              console.log(`${title} player: Set initial volume to ${volume}%`);
+              // CRITICAL: Set initial volume with verification
+              if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+                playerRef.current.setVolume(volume);
+                console.log(`${title} player: Set initial volume to ${volume}%`);
+                
+                // Read back the volume to verify
+                if (typeof playerRef.current.getVolume === 'function') {
+                  try {
+                    const actualVolume = playerRef.current.getVolume();
+                    console.log(`${title} player: Verified volume is set to ${actualVolume}%`);
+                    
+                    // If there's a mismatch, try setting it again
+                    if (actualVolume !== volume) {
+                      console.log(`${title} player: Volume mismatch, resetting to ${volume}%`);
+                      playerRef.current.setVolume(volume);
+                    }
+                  } catch (volError) {
+                    console.error(`Error getting volume:`, volError);
+                  }
+                }
+              } else {
+                console.error(`${title} player: Cannot set volume - missing setVolume method`);
+              }
               
               // Get video title and pass it to parent component
               const videoTitle = playerRef.current.getVideoData().title;
@@ -333,13 +353,48 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
         (transitionRef.current.targetVolume - transitionRef.current.startVolume) * progress
       );
       
-      // Set the volume
+      // Update state
       setVolume(currentVol);
+      
+      // CRITICAL: Update the actual player volume - this is the key part
       if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
         try {
+          // Apply the volume directly to the player
           playerRef.current.setVolume(currentVol);
+          
+          // Log progress at key points
+          if (progress === 0 || progress === 1 || progress % 0.25 < 0.01) {
+            console.log(`${title} volume transition ${Math.round(progress * 100)}%: ${currentVol}%`);
+          }
         } catch (error) {
           console.log('Error during volume transition:', error);
+        }
+      } else {
+        // Try to find the player in the DOM as a fallback
+        const containerId = `youtube-container-${title.toLowerCase().replace(/\s/g, '-')}`;
+        const container = document.getElementById(containerId);
+        if (container) {
+          const iframe = container.querySelector('iframe');
+          if (iframe) {
+            try {
+              // Try direct iframe API access
+              const iframeWindow = (iframe as any).contentWindow;
+              if (iframeWindow && iframeWindow.postMessage) {
+                const message = JSON.stringify({
+                  event: 'command',
+                  func: 'setVolume',
+                  args: [currentVol],
+                  id: containerId
+                });
+                iframeWindow.postMessage(message, '*');
+                if (progress === 1) {
+                  console.log(`Completed volume transition via iframe API: ${currentVol}%`);
+                }
+              }
+            } catch (e) {
+              // Silent catch - we don't want to flood the console
+            }
+          }
         }
       }
       
@@ -369,16 +424,39 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   
   // Handle slider volume change
   const handleVolumeChange = (newVolume: number) => {
+    console.log(`Volume slider changed for ${title}: ${newVolume}%`);
+    
     // For direct slider changes, update immediately (no transition)
     setVolume(newVolume);
     
-    // Directly set the player volume if available
+    // CRITICAL: Directly set the player volume if available
     if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
       try {
         playerRef.current.setVolume(newVolume);
         console.log(`Directly set ${title} player volume to ${newVolume}%`);
       } catch (error) {
         console.error(`Error setting ${title} player volume:`, error);
+      }
+    } else {
+      console.warn(`${title} player reference not available for volume change`);
+      
+      // Try to find the player in the DOM as a fallback
+      const containerId = `youtube-container-${title.toLowerCase().replace(/\s/g, '-')}`;
+      const container = document.getElementById(containerId);
+      if (container) {
+        const iframe = container.querySelector('iframe');
+        if (iframe) {
+          console.log(`Found iframe for ${title} player, attempting direct access`);
+          try {
+            const player = (iframe as any).contentWindow.player;
+            if (player && typeof player.setVolume === 'function') {
+              player.setVolume(newVolume);
+              console.log(`Set ${title} volume via iframe direct access: ${newVolume}%`);
+            }
+          } catch (e) {
+            console.error(`Failed to access ${title} player via iframe:`, e);
+          }
+        }
       }
     }
     
@@ -649,16 +727,46 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
         <Slider
           value={[volume]}
           onValueChange={([newVolume]) => {
+            console.log(`Slider for ${title} changed to ${newVolume}%`);
+            
             // Update state
             setVolume(newVolume);
             
-            // Set player volume directly
+            // CRITICAL: Set player volume directly with logging
             if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
               try {
                 playerRef.current.setVolume(newVolume);
                 console.log(`${title} slider: Set player volume to ${newVolume}%`);
               } catch (error) {
                 console.error(`Error setting ${title} player volume:`, error);
+              }
+            } else {
+              console.warn(`${title} player not available for direct volume change via slider`);
+              
+              // Try to find the player in the DOM as a fallback
+              const containerId = `youtube-container-${title.toLowerCase().replace(/\s/g, '-')}`;
+              const container = document.getElementById(containerId);
+              if (container) {
+                const iframe = container.querySelector('iframe');
+                if (iframe) {
+                  console.log(`Found iframe for ${title} player, attempting direct access from slider`);
+                  try {
+                    // Try to access the iframe directly
+                    const iframeWindow = (iframe as any).contentWindow;
+                    if (iframeWindow && iframeWindow.postMessage) {
+                      const message = JSON.stringify({
+                        event: 'command',
+                        func: 'setVolume',
+                        args: [newVolume],
+                        id: containerId
+                      });
+                      iframeWindow.postMessage(message, '*');
+                      console.log(`Posted volume message to ${title} iframe: ${newVolume}%`);
+                    }
+                  } catch (e) {
+                    console.error(`Failed to access ${title} player via iframe from slider:`, e);
+                  }
+                }
               }
             }
             
