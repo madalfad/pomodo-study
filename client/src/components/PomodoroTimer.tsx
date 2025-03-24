@@ -128,22 +128,15 @@ const PomodoroTimer: FC = () => {
       playTimerSound(TimerSounds.breakEnd, alertVolume);
     }
 
-    // Set state first, then dispatch events
+    // Dispatch custom event for sound mixer
+    window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
+      detail: { timerType: newTimerType }
+    }));
+
     setTimerType(newTimerType);
     setTimeRemaining(newDuration);
     setCurrentCycle(newCycle);
     setIsRunning(true); // Auto-start next phase
-    
-    // Delay event dispatch slightly to ensure state is updated
-    setTimeout(() => {
-      // Dispatch custom event for sound mixer with clear volume targets
-      window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
-        detail: { 
-          timerType: newTimerType,
-          fromTimerType: timerType // Include previous state for reference
-        }
-      }));
-    }, 50);
   };
 
   const startTimer = () => {

@@ -2,7 +2,6 @@ import { FC, useState, useEffect, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { fadeVolume } from '@/lib/volumeFader';
 
 interface YouTubeEmbedProps {
   defaultUrl: string;
@@ -26,9 +25,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [volume, setVolume] = useState(initialVolume);
   const [videoId, setVideoId] = useState<string | null>(null);
-  const [timerType, setTimerType] = useState<'focus' | 'break' | 'longBreak'>('focus');
   const playerRef = useRef<any>(null);
-  const fadeControlRef = useRef<{ cancel: () => void } | null>(null);
   
   // Extract YouTube video ID from URL
   useEffect(() => {
@@ -134,38 +131,14 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   useEffect(() => {
     if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
       try {
-        // Apply volume to YouTube player with a small delay
-        // This helps with YouTube's API rate limiting
-        const applyVolume = () => {
-          if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-            try {
-              console.log(`Setting ${title} player volume: ${volume}`);
-              playerRef.current.setVolume(volume);
-              
-              // Double-check if volume was set correctly after a small delay
-              setTimeout(() => {
-                if (playerRef.current && typeof playerRef.current.getVolume === 'function') {
-                  const actualVolume = playerRef.current.getVolume();
-                  if (Math.abs(actualVolume - volume) > 3) {
-                    console.log(`Volume mismatch detected for ${title}. Expected: ${volume}, Actual: ${actualVolume}. Retrying...`);
-                    playerRef.current.setVolume(volume);
-                  }
-                }
-              }, 50);
-            } catch (error) {
-              console.error('Error setting volume:', error);
-            }
-          }
-        };
-        
-        applyVolume();
+        playerRef.current.setVolume(volume);
       } catch (error) {
-        console.error('Error setting volume:', error);
+        console.log('Error setting volume:', error);
       }
     }
     
     onVolumeChange(volume);
-  }, [volume, onVolumeChange, title]);
+  }, [volume, onVolumeChange]);
   
   // Update URL and reinitialize player
   const handleUrlChange = () => {
@@ -176,111 +149,51 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     }
   };
   
-  // Toggle between focus and break volume manually with fade transition
-  const toggleVolumeMode = () => {
-    // Cancel any ongoing fade
-    if (fadeControlRef.current) {
-      fadeControlRef.current.cancel();
-      fadeControlRef.current = null;
-    }
-    
-    const newTimerType = timerType === 'focus' ? 'break' : 'focus';
-    const targetVol = newTimerType === 'focus' ? initialVolume : breakVolume;
-    
-    console.log(`Manually toggling ${title} volume mode: ${timerType} -> ${newTimerType} (${volume} -> ${targetVol})`);
-    
-    // Update state first
-    setTimerType(newTimerType);
-    
-    // Use our fade utility for a smooth transition
-    fadeControlRef.current = fadeVolume(
-      playerRef.current,
-      volume,
-      targetVol,
-      1000, // 1 second transition
-      (newVolume) => {
-        setVolume(Math.round(newVolume)); // Round to clean up display
-      }
-    );
-  };
-  
-  // For external Pomodoro timer to control volume with smooth transition
+  // For external Pomodoro timer to control volume
   useEffect(() => {
     const handlePomodoroStateChange = (event: CustomEvent) => {
-      // Cancel any ongoing fade
-      if (fadeControlRef.current) {
-        fadeControlRef.current.cancel();
-        fadeControlRef.current = null;
-      }
-      
-      const newTimerType = event.detail.timerType;
-      const fromTimerType = event.detail.fromTimerType || timerType;
-      
-      // Skip if we're changing to the same timer type
-      if (newTimerType === timerType && newTimerType === fromTimerType) {
-        console.log(`${title} player: Skipping transition - already in ${newTimerType} mode`);
-        return;
-      }
-      
-      // Update timer type locally
-      setTimerType(newTimerType);
-      
-      // Determine target volume based on new timer type
-      const targetVolume = newTimerType === 'focus' ? initialVolume : breakVolume;
-      
-      console.log(`${title} player: Timer type changed to ${newTimerType}. Volume transition: ${volume} -> ${targetVolume}`);
-      
-      // Use the simple setInterval-based fade that worked in the original code
-      fadeControlRef.current = fadeVolume(
-        playerRef.current,
-        volume,
-        targetVolume,
-        1000,  // 1 second transition
-        (newVolume) => {
-          // Update the React state as the volume changes
-          setVolume(Math.round(newVolume));
+      if (event.detail.timerType === 'focus') {
+        setVolume(initialVolume);
+        if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+          try {
+            playerRef.current.setVolume(initialVolume);
+          } catch (error) {
+            console.log('Error setting volume in pomodoro state change:', error);
+          }
         }
-      );
+      } else {
+        setVolume(breakVolume);
+        if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+          try {
+            playerRef.current.setVolume(breakVolume);
+          } catch (error) {
+            console.log('Error setting volume in pomodoro state change:', error);
+          }
+        }
+      }
     };
     
     window.addEventListener('pomodoroStateChange' as any, handlePomodoroStateChange);
     
     return () => {
-      // Clean up event listener and any ongoing fade
       window.removeEventListener('pomodoroStateChange' as any, handlePomodoroStateChange);
-      if (fadeControlRef.current) {
-        fadeControlRef.current.cancel();
-      }
     };
-  }, [initialVolume, breakVolume, volume, title]);
+  }, [initialVolume, breakVolume]);
   
   return (
     <div className="youtube-embed">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-lg font-medium text-amber-400">{title}</h3>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={toggleVolumeMode}
-            size="sm"
-            variant="outline"
-            className="h-8 px-2 text-xs bg-transparent border border-gray-600 hover:bg-gray-700"
-          >
-            <span className="mr-1">Mode:</span>
-            <span className={timerType === 'focus' ? 'text-green-400' : 'text-amber-400'}>
-              {timerType === 'focus' ? 'Focus' : 'Break'}
-            </span>
-          </Button>
-          <button 
-            onClick={() => setShowUrlInput(!showUrlInput)}
-            className="text-gray-400 hover:text-amber-400 transition-colors"
-            aria-label="Settings"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-        </div>
+        <button 
+          onClick={() => setShowUrlInput(!showUrlInput)}
+          className="text-gray-400 hover:text-amber-400 transition-colors"
+          aria-label="Settings"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
       </div>
       
       {showUrlInput && (
@@ -311,15 +224,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               <label className="block text-xs text-gray-400 mb-1">Focus Volume</label>
               <Slider
                 value={[initialVolume]}
-                onValueChange={([newVolume]) => {
-                  // Update work volume in parent component
-                  onVolumeChange(newVolume);
-                  // If we're currently in focus mode, also update the visible volume
-                  if (timerType === 'focus' && playerRef.current) {
-                    setVolume(newVolume);
-                    playerRef.current.setVolume(newVolume);
-                  }
-                }}
+                onValueChange={([newVolume]) => onVolumeChange(newVolume)}
                 max={100}
                 step={1}
                 className="cursor-pointer"
@@ -334,17 +239,10 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               <Slider
                 value={[breakVolume]}
                 onValueChange={([newVolume]) => {
-                  // Dispatch event for parent component to update break volume
                   const event = new CustomEvent('breakVolumeChange', {
                     detail: { type: title.toLowerCase(), volume: newVolume }
                   });
                   window.dispatchEvent(event);
-                  
-                  // If we're currently in break mode, also update the visible volume
-                  if (timerType !== 'focus' && playerRef.current) {
-                    setVolume(newVolume);
-                    playerRef.current.setVolume(newVolume);
-                  }
                 }}
                 max={100}
                 step={1}
@@ -369,27 +267,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
         </div>
         <Slider
           value={[volume]}
-          onValueChange={([newVolume]) => {
-            setVolume(newVolume);
-            if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-              try {
-                playerRef.current.setVolume(newVolume);
-              } catch (error) {
-                console.log('Error setting volume:', error);
-              }
-            }
-            
-            // Update the appropriate volume based on current timer mode
-            if (timerType === 'focus') {
-              onVolumeChange(newVolume); // Update focus/work volume
-            } else {
-              // Update break volume through the event system
-              const event = new CustomEvent('breakVolumeChange', {
-                detail: { type: title.toLowerCase(), volume: newVolume }
-              });
-              window.dispatchEvent(event);
-            }
-          }}
+          onValueChange={([newVolume]) => setVolume(newVolume)}
           max={100}
           step={1}
           className="cursor-pointer"
