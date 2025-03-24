@@ -117,9 +117,59 @@ const SoundMixer: FC = () => {
     DEFAULT_SETTINGS
   );
   
-  // Auto-refresh videos on initial load to ensure proper loading
+  // Initialize both music and ambience players on initial load
   useEffect(() => {
-    // Wait for YouTube API to be ready and players to be initialized
+    // Initialize music player explicitly - it doesn't initialize automatically like ambience player
+    const musicVideoId = extractVideoId(videoSettings.musicUrl);
+    if (musicVideoId) {
+      console.log("Initializing Music player with video ID:", musicVideoId);
+      
+      // Make sure container exists
+      const musicContainer = document.getElementById('youtube-container-music');
+      if (musicContainer) {
+        // Clear container first to ensure clean initialization
+        musicContainer.innerHTML = '';
+        
+        // Create player element
+        const musicPlayerElement = document.createElement('div');
+        musicPlayerElement.id = 'youtube-player-music';
+        musicContainer.appendChild(musicPlayerElement);
+        
+        // Initialize the YouTube player if the API is ready
+        if (window.YT && window.YT.Player) {
+          console.log("Creating new Music YouTube player instance");
+          new window.YT.Player('youtube-player-music', {
+            height: '200',
+            width: '100%',
+            videoId: musicVideoId,
+            playerVars: {
+              autoplay: 1,
+              controls: 1,
+              rel: 0,
+              showinfo: 0,
+              mute: 0,
+              loop: 1,
+              origin: window.location.origin,
+              playsinline: 1
+            },
+            events: {
+              onReady: (event: any) => {
+                console.log("Music player ready!");
+                event.target.setVolume(videoSettings.musicWorkVolume);
+                
+                // Get video title and update state
+                const videoTitle = event.target.getVideoData().title;
+                if (videoTitle) {
+                  updateMusicTitle(videoTitle);
+                }
+              }
+            }
+          });
+        }
+      }
+    }
+    
+    // Auto-refresh both players after a delay to ensure reliable loading
     const autoRefreshTimeout = setTimeout(() => {
       console.log("Auto-refreshing videos on initial load");
       refreshVideos();
