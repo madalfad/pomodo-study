@@ -184,37 +184,22 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       fadeControlRef.current = null;
     }
     
-    // Get current volume directly from player if possible
-    let currentVol = volume;
-    try {
-      if (playerRef.current && typeof playerRef.current.getVolume === 'function') {
-        const playerVolume = playerRef.current.getVolume();
-        console.log(`${title} player reports current volume: ${playerVolume}`);
-        // Only update if there's a significant difference to avoid confusion
-        if (Math.abs(playerVolume - currentVol) > 2) {
-          currentVol = playerVolume;
-        }
-      }
-    } catch (error) {
-      console.error('Error getting player volume:', error);
-    }
-    
     const newTimerType = timerType === 'focus' ? 'break' : 'focus';
     const targetVol = newTimerType === 'focus' ? initialVolume : breakVolume;
     
-    console.log(`Manually toggling ${title} volume mode: ${timerType} -> ${newTimerType} (${currentVol} -> ${targetVol})`);
+    console.log(`Manually toggling ${title} volume mode: ${timerType} -> ${newTimerType} (${volume} -> ${targetVol})`);
     
     // Update state first
     setTimerType(newTimerType);
     
-    // Always perform the fade, even for small differences
+    // Use our fade utility for a smooth transition
     fadeControlRef.current = fadeVolume(
       playerRef.current,
-      currentVol,
+      volume,
       targetVol,
       1000, // 1 second transition
       (newVolume) => {
-        setVolume(newVolume);
+        setVolume(Math.round(newVolume)); // Round to clean up display
       }
     );
   };
@@ -237,38 +222,23 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
         return;
       }
       
-      // Get current volume directly from player if possible
-      let currentVolume = volume;
-      try {
-        if (playerRef.current && typeof playerRef.current.getVolume === 'function') {
-          const playerVolume = playerRef.current.getVolume();
-          console.log(`${title} player reports current volume (pomodoroStateChange): ${playerVolume}`);
-          // Only update if there's a significant difference
-          if (Math.abs(playerVolume - currentVolume) > 2) {
-            currentVolume = playerVolume;
-          }
-        }
-      } catch (error) {
-        console.error('Error getting player volume:', error);
-      }
-      
       // Update timer type locally
       setTimerType(newTimerType);
       
       // Determine target volume based on new timer type
       const targetVolume = newTimerType === 'focus' ? initialVolume : breakVolume;
       
-      console.log(`${title} player: Timer type changed to ${newTimerType}. Volume transition: ${currentVolume} -> ${targetVolume}`);
+      console.log(`${title} player: Timer type changed to ${newTimerType}. Volume transition: ${volume} -> ${targetVolume}`);
       
-      // Always perform the fade for the pomodoro timer transitions
+      // Use the simple setInterval-based fade that worked in the original code
       fadeControlRef.current = fadeVolume(
         playerRef.current,
-        currentVolume,
+        volume,
         targetVolume,
         1000,  // 1 second transition
         (newVolume) => {
           // Update the React state as the volume changes
-          setVolume(newVolume);
+          setVolume(Math.round(newVolume));
         }
       );
     };
