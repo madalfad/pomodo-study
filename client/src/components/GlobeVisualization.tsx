@@ -1,10 +1,8 @@
 import { FC, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { motion } from "framer-motion";
-import { RefreshCw } from "lucide-react";
 import earthMap from "@/assets/images/earth-map.svg";
 
 interface ActiveUser {
@@ -65,8 +63,6 @@ const latLongToVector3 = (lat: number, lng: number, radius: number) => {
 const GlobeVisualization: FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeUsers, setActiveUsers] = useState<number>(0);
-  const [refreshCounter, setRefreshCounter] = useState<number>(0);
-  const [loadAttempts, setLoadAttempts] = useState<number>(0);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -172,149 +168,47 @@ const GlobeVisualization: FC = () => {
   // Reference to store initialization state
   const isInitializedRef = useRef(false);
   
-  // Button state
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // Preload the SVG map
-  useEffect(() => {
-    console.log("Preloading earth map image...");
-    const preloadImage = new Image();
-    preloadImage.src = earthMap;
-    preloadImage.onload = () => {
-      console.log("Earth map image preloaded successfully");
-    };
-  }, []);
-  
-  // Manual refresh function
-  const handleManualRefresh = () => {
-    console.log("Manual globe refresh requested");
-    
-    // Show refreshing state
-    setIsRefreshing(true);
-    
-    // Clean up any existing ThreeJS resources
-    if (containerRef.current) {
-      // Clean up Three.js animation
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = undefined;
-      }
-      
-      // Remove renderer from DOM
-      if (rendererRef.current && containerRef.current.contains(rendererRef.current.domElement)) {
-        try {
-          containerRef.current.removeChild(rendererRef.current.domElement);
-        } catch (err) {
-          console.log("Error removing renderer:", err);
-        }
-      }
-      
-      // Clear container completely
-      while (containerRef.current.firstChild) {
-        try {
-          containerRef.current.removeChild(containerRef.current.firstChild);
-        } catch (err) {
-          console.log("Error clearing container:", err);
-          break;
-        }
-      }
-      
-      // Clean up Three.js resources
-      if (globeRef.current) {
-        if (globeRef.current.geometry) globeRef.current.geometry.dispose();
-        if (globeRef.current.material instanceof THREE.Material) {
-          globeRef.current.material.dispose();
-        }
-      }
-      
-      // Clean up markers
-      markersRef.current.forEach(marker => {
-        if (marker.geometry) marker.geometry.dispose();
-        if (marker.material instanceof THREE.Material) marker.material.dispose();
-      });
-      
-      // Clean up pulses
-      pulsesRef.current.forEach(pulse => {
-        if (pulse.mesh.geometry) pulse.mesh.geometry.dispose();
-        if (pulse.mesh.material instanceof THREE.Material) pulse.mesh.material.dispose();
-      });
-      
-      // Clean up renderer
-      if (rendererRef.current) {
-        try {
-          rendererRef.current.dispose();
-        } catch (err) {
-          console.log("Error disposing renderer:", err);
-        }
-      }
-      
-      // Reset all refs
-      sceneRef.current = null;
-      cameraRef.current = null;
-      rendererRef.current = null;
-      globeRef.current = null;
-      markersRef.current = [];
-      pulsesRef.current = [];
-      
-      // Force re-initialization
-      isInitializedRef.current = false;
-      
-      // Explicitly force a re-run of the initialization effect by adding a state dependency
-      // We need this to trigger the useEffect that initializes the globe
-      setRefreshCounter(prev => prev + 1);
-    }
-    
-    // Reset refreshing state after a short delay
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
-  };
-  
-  // Force refresh on page load with multiple attempts
+  // Force refresh on page load
   useEffect(() => {
     console.log("Setting up forced globe refresh mechanism");
     
-    // Immediately trigger a refresh counter increment on component mount
-    // This ensures we get at least one initialization attempt right away
-    setRefreshCounter(prev => prev + 1);
-    
-    // Series of timed refresh attempts to ensure the globe loads properly
-    const attemptSchedule = [100, 500, 1000, 2000, 3000]; // Multiple attempts at different delays
-    
-    // Schedule multiple refresh attempts
-    attemptSchedule.forEach((delay, index) => {
-      refreshTimeoutRef.current = setTimeout(() => {
-        // Check if we need to initialize (either no renderer or no globe)
-        if (containerRef.current && (!rendererRef.current || !globeRef.current)) {
-          console.log(`Forcing globe refresh - attempt ${index + 1} at ${delay}ms`);
-          
-          // Clean up any existing DOM elements
-          try {
+    // First delay is short (500ms) - this is the initial attempt
+    refreshTimeoutRef.current = setTimeout(() => {
+      // Only refresh if the container exists but renderer is missing
+      if (containerRef.current && !rendererRef.current) {
+        console.log("Forcing initial globe refresh - first attempt");
+        
+        // Clean up any existing DOM elements
+        while (containerRef.current.firstChild) {
+          containerRef.current.removeChild(containerRef.current.firstChild);
+        }
+        
+        // Reset refs
+        sceneRef.current = null;
+        cameraRef.current = null;
+        rendererRef.current = null;
+        globeRef.current = null;
+        markersRef.current = [];
+        pulsesRef.current = [];
+        
+        // Force re-initialization
+        isInitializedRef.current = false;
+        
+        // Second chance with longer delay (2 seconds)
+        refreshTimeoutRef.current = setTimeout(() => {
+          if (containerRef.current && !rendererRef.current) {
+            console.log("Forcing globe refresh - second attempt");
+            // Clean up container again
             while (containerRef.current.firstChild) {
               containerRef.current.removeChild(containerRef.current.firstChild);
             }
-          } catch (err) {
-            console.log("Error clearing container:", err);
+            
+            // Force re-initialization
+            isInitializedRef.current = false;
           }
-          
-          // Reset refs
-          sceneRef.current = null;
-          cameraRef.current = null;
-          rendererRef.current = null;
-          globeRef.current = null;
-          markersRef.current = [];
-          pulsesRef.current = [];
-          
-          // Force re-initialization by incrementing the refresh counter
-          setRefreshCounter(prev => prev + 1);
-          
-          // Force re-initialization flag
-          isInitializedRef.current = false;
-        } else {
-          console.log(`Refresh attempt ${index + 1} not needed, globe already initialized`);
-        }
-      }, delay);
-    });
+        }, 2000);
+      }
+    }, 500);
     
     return () => {
       // Clean up any pending timeouts
@@ -326,13 +220,7 @@ const GlobeVisualization: FC = () => {
   
   // Initialize and setup the globe
   useEffect(() => {
-    console.log(`Initializing globe (attempt: ${loadAttempts}, refresh: ${refreshCounter})`);
-    setLoadAttempts(prev => prev + 1);
-    
-    if (!containerRef.current) {
-      console.log("Container ref not available, cannot initialize globe");
-      return;
-    }
+    if (!containerRef.current) return;
     
     // Get container dimensions
     const width = containerRef.current.clientWidth;
@@ -597,7 +485,7 @@ const GlobeVisualization: FC = () => {
       if (controls) controls.dispose();
       if (rendererRef.current) rendererRef.current.dispose();
     };
-  }, [refreshCounter, loadAttempts]);
+  }, []);
 
   return (
     <motion.div
@@ -607,24 +495,12 @@ const GlobeVisualization: FC = () => {
     >
       <Card className="shadow-lg bg-gray-800 border-gray-700">
         <CardContent className="p-6">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="text-xl font-poppins font-semibold text-amber-400 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              pomodo Community
-            </h2>
-            <Button 
-              onClick={handleManualRefresh} 
-              disabled={isRefreshing} 
-              size="sm" 
-              variant="outline" 
-              className="text-xs flex items-center gap-1 text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
-            >
-              <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Refreshing...' : 'Refresh Globe'}
-            </Button>
-          </div>
+          <h2 className="text-xl font-poppins font-semibold mb-5 text-amber-400 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            pomodo Community
+          </h2>
           
           <div 
             ref={containerRef} 
