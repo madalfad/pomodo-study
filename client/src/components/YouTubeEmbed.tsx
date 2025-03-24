@@ -31,6 +31,12 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   const [volume, setVolume] = useState(initialVolume);
   const [videoId, setVideoId] = useState<string | null>(null);
   const playerRef = useRef<any>(null);
+  const transitionRef = useRef<{ animationId: number | null, startVolume: number, targetVolume: number, startTime: number }>({
+    animationId: null,
+    startVolume: initialVolume,
+    targetVolume: initialVolume,
+    startTime: 0
+  });
   
   // Extract YouTube video ID from URL
   useEffect(() => {
@@ -90,6 +96,12 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       if (playerRef.current) {
         playerRef.current.destroy();
       }
+      
+      // Cancel any ongoing volume transitions
+      if (transitionRef.current.animationId !== null) {
+        cancelAnimationFrame(transitionRef.current.animationId);
+        transitionRef.current.animationId = null;
+      }
     };
   }, [videoId]);
   
@@ -137,6 +149,55 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     });
   };
   
+  // Function to smoothly transition volume
+  const smoothVolumeTransition = (targetVol: number) => {
+    // Cancel any ongoing transition
+    if (transitionRef.current.animationId !== null) {
+      cancelAnimationFrame(transitionRef.current.animationId);
+    }
+    
+    // Set up the transition parameters
+    const duration = 1000; // 1 second transition
+    transitionRef.current.startVolume = volume;
+    transitionRef.current.targetVolume = targetVol;
+    transitionRef.current.startTime = performance.now();
+    
+    // Define the animation step
+    const animateVolume = (timestamp: number) => {
+      // Calculate elapsed time
+      const elapsed = timestamp - transitionRef.current.startTime;
+      
+      // Calculate progress (0 to 1)
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Calculate current volume using linear interpolation
+      const currentVol = Math.round(
+        transitionRef.current.startVolume + 
+        (transitionRef.current.targetVolume - transitionRef.current.startVolume) * progress
+      );
+      
+      // Set the volume
+      setVolume(currentVol);
+      if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+        try {
+          playerRef.current.setVolume(currentVol);
+        } catch (error) {
+          console.log('Error during volume transition:', error);
+        }
+      }
+      
+      // Continue animation if not complete
+      if (progress < 1) {
+        transitionRef.current.animationId = requestAnimationFrame(animateVolume);
+      } else {
+        transitionRef.current.animationId = null;
+      }
+    };
+    
+    // Start the animation
+    transitionRef.current.animationId = requestAnimationFrame(animateVolume);
+  };
+  
   // Update player volume when the slider changes
   useEffect(() => {
     if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
@@ -150,6 +211,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   
   // Handle slider volume change
   const handleVolumeChange = (newVolume: number) => {
+    // For direct slider changes, update immediately (no transition)
     setVolume(newVolume);
     onVolumeChange(newVolume);
   };
@@ -180,23 +242,11 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   useEffect(() => {
     const handlePomodoroStateChange = (event: CustomEvent) => {
       if (event.detail.timerType === 'focus') {
-        setVolume(initialVolume);
-        if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-          try {
-            playerRef.current.setVolume(initialVolume);
-          } catch (error) {
-            console.log('Error setting volume in pomodoro state change:', error);
-          }
-        }
+        // Smooth transition to focus volume
+        smoothVolumeTransition(initialVolume);
       } else {
-        setVolume(breakVolume);
-        if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-          try {
-            playerRef.current.setVolume(breakVolume);
-          } catch (error) {
-            console.log('Error setting volume in pomodoro state change:', error);
-          }
-        }
+        // Smooth transition to break volume
+        smoothVolumeTransition(breakVolume);
       }
     };
     
@@ -262,7 +312,12 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               <label className="block text-xs text-gray-400 mb-1">Focus Volume</label>
               <Slider
                 value={[initialVolume]}
-                onValueChange={([newVolume]) => handleVolumeChange(newVolume)}
+                onValueChange={([newVolume]) => {
+                  // Preview the focus volume with a smooth transition
+                  smoothVolumeTransition(newVolume);
+                  // Update the stored focus volume
+                  handleVolumeChange(newVolume);
+                }}
                 max={100}
                 step={1}
                 className="cursor-pointer"
@@ -276,7 +331,10 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
               <label className="block text-xs text-gray-400 mb-1">Break Volume</label>
               <Slider
                 value={[breakVolume]}
-                onValueChange={([newVolume]) => handleBreakVolumeChange(newVolume)}
+                onValueChange={([newVolume]) => {
+                  // Just update the break volume (no transition preview needed)
+                  handleBreakVolumeChange(newVolume);
+                }}
                 max={100}
                 step={1}
                 className="cursor-pointer"
@@ -300,7 +358,12 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
         </div>
         <Slider
           value={[volume]}
-          onValueChange={([newVolume]) => setVolume(newVolume)}
+          onValueChange={([newVolume]) => {
+            // Apply smooth transition for main volume slider too
+            smoothVolumeTransition(newVolume);
+            // Also update the work/focus volume setting
+            onVolumeChange(newVolume);
+          }}
           max={100}
           step={1}
           className="cursor-pointer"
