@@ -5,10 +5,6 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { motion } from "framer-motion";
 import earthMap from "@/assets/images/earth-map.svg";
 
-// Preload the earth map SVG texture
-const preloadedEarthMap = new Image();
-preloadedEarthMap.src = earthMap;
-
 interface ActiveUser {
   id: string;
   lat: number;
@@ -74,7 +70,6 @@ const GlobeVisualization: FC = () => {
   const markersRef = useRef<THREE.Mesh[]>([]);
   const animationFrameRef = useRef<number>();
   const pulsesRef = useRef<{mesh: THREE.Mesh, maxScale: number, speed: number}[]>([]);
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Generate user data
   const fetchUserLocations = async (): Promise<ActiveUser[]> => {
@@ -169,59 +164,6 @@ const GlobeVisualization: FC = () => {
     return users;
   };
 
-  // Reference to store initialization state
-  const isInitializedRef = useRef(false);
-  
-  // Force refresh on page load
-  useEffect(() => {
-    console.log("Setting up forced globe refresh mechanism");
-    
-    // First delay is short (500ms) - this is the initial attempt
-    refreshTimeoutRef.current = setTimeout(() => {
-      // Only refresh if the container exists but renderer is missing
-      if (containerRef.current && !rendererRef.current) {
-        console.log("Forcing initial globe refresh - first attempt");
-        
-        // Clean up any existing DOM elements
-        while (containerRef.current.firstChild) {
-          containerRef.current.removeChild(containerRef.current.firstChild);
-        }
-        
-        // Reset refs
-        sceneRef.current = null;
-        cameraRef.current = null;
-        rendererRef.current = null;
-        globeRef.current = null;
-        markersRef.current = [];
-        pulsesRef.current = [];
-        
-        // Force re-initialization
-        isInitializedRef.current = false;
-        
-        // Second chance with longer delay (2 seconds)
-        refreshTimeoutRef.current = setTimeout(() => {
-          if (containerRef.current && !rendererRef.current) {
-            console.log("Forcing globe refresh - second attempt");
-            // Clean up container again
-            while (containerRef.current.firstChild) {
-              containerRef.current.removeChild(containerRef.current.firstChild);
-            }
-            
-            // Force re-initialization
-            isInitializedRef.current = false;
-          }
-        }, 2000);
-      }
-    }, 500);
-    
-    return () => {
-      // Clean up any pending timeouts
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, []);
-  
   // Initialize and setup the globe
   useEffect(() => {
     if (!containerRef.current) return;
@@ -261,25 +203,29 @@ const GlobeVisualization: FC = () => {
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
     
-    // Create material with a basic blue color
+    // Create a new image element
+    const earthImage = new Image();
+    earthImage.src = earthMap;
+    
+    // Create material with a basic blue color until image loads
     const globeMaterial = new THREE.MeshBasicMaterial({
       color: 0x364075, 
       transparent: true,
       opacity: 0.9
     });
     
-    // Use the preloaded earth image
-    console.log("Using preloaded earth map for globe texture");
-    
-    // Apply texture immediately
-    if (ctx) {
-      // Draw the preloaded image to the canvas
-      ctx.drawImage(preloadedEarthMap, 0, 0, canvas.width, canvas.height);
-      const texture = new THREE.CanvasTexture(canvas);
-      // Apply the texture to the material
-      (globeMaterial as any).map = texture;
-      (globeMaterial as any).needsUpdate = true;
-    }
+    // When image loads, update the texture
+    earthImage.onload = () => {
+      if (ctx) {
+        ctx.drawImage(earthImage, 0, 0, canvas.width, canvas.height);
+        const texture = new THREE.CanvasTexture(canvas);
+        // Apply the texture to the existing material
+        if (globeRef.current) {
+          (globeRef.current.material as THREE.MeshBasicMaterial).map = texture;
+          (globeRef.current.material as THREE.MeshBasicMaterial).needsUpdate = true;
+        }
+      }
+    };
     
     // Create the globe mesh
     const globe = new THREE.Mesh(globeGeometry, globeMaterial);
