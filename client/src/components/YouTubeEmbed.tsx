@@ -134,14 +134,38 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   useEffect(() => {
     if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
       try {
-        playerRef.current.setVolume(volume);
+        // Apply volume to YouTube player with a small delay
+        // This helps with YouTube's API rate limiting
+        const applyVolume = () => {
+          if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+            try {
+              console.log(`Setting ${title} player volume: ${volume}`);
+              playerRef.current.setVolume(volume);
+              
+              // Double-check if volume was set correctly after a small delay
+              setTimeout(() => {
+                if (playerRef.current && typeof playerRef.current.getVolume === 'function') {
+                  const actualVolume = playerRef.current.getVolume();
+                  if (Math.abs(actualVolume - volume) > 3) {
+                    console.log(`Volume mismatch detected for ${title}. Expected: ${volume}, Actual: ${actualVolume}. Retrying...`);
+                    playerRef.current.setVolume(volume);
+                  }
+                }
+              }, 50);
+            } catch (error) {
+              console.error('Error setting volume:', error);
+            }
+          }
+        };
+        
+        applyVolume();
       } catch (error) {
-        console.log('Error setting volume:', error);
+        console.error('Error setting volume:', error);
       }
     }
     
     onVolumeChange(volume);
-  }, [volume, onVolumeChange]);
+  }, [volume, onVolumeChange, title]);
   
   // Update URL and reinitialize player
   const handleUrlChange = () => {
@@ -160,27 +184,30 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       fadeControlRef.current = null;
     }
     
-    const newTimerType = timerType === 'focus' ? 'break' : 'focus';
-    const currentVol = volume;
-    const targetVol = newTimerType === 'focus' ? initialVolume : breakVolume;
-    
-    // Skip if the volume difference is too small
-    if (Math.abs(targetVol - currentVol) < 2) {
-      console.log(`Manually toggling ${title} volume mode: skipping fade (difference too small)`);
-      setTimerType(newTimerType);
-      setVolume(targetVol);
-      if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-        playerRef.current.setVolume(targetVol);
+    // Get current volume directly from player if possible
+    let currentVol = volume;
+    try {
+      if (playerRef.current && typeof playerRef.current.getVolume === 'function') {
+        const playerVolume = playerRef.current.getVolume();
+        console.log(`${title} player reports current volume: ${playerVolume}`);
+        // Only update if there's a significant difference to avoid confusion
+        if (Math.abs(playerVolume - currentVol) > 2) {
+          currentVol = playerVolume;
+        }
       }
-      return;
+    } catch (error) {
+      console.error('Error getting player volume:', error);
     }
+    
+    const newTimerType = timerType === 'focus' ? 'break' : 'focus';
+    const targetVol = newTimerType === 'focus' ? initialVolume : breakVolume;
     
     console.log(`Manually toggling ${title} volume mode: ${timerType} -> ${newTimerType} (${currentVol} -> ${targetVol})`);
     
     // Update state first
     setTimerType(newTimerType);
     
-    // Use our fade utility for a smooth transition
+    // Always perform the fade, even for small differences
     fadeControlRef.current = fadeVolume(
       playerRef.current,
       currentVol,
@@ -203,12 +230,26 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       
       const newTimerType = event.detail.timerType;
       const fromTimerType = event.detail.fromTimerType || timerType;
-      const currentVolume = volume;
       
       // Skip if we're changing to the same timer type
       if (newTimerType === timerType && newTimerType === fromTimerType) {
         console.log(`${title} player: Skipping transition - already in ${newTimerType} mode`);
         return;
+      }
+      
+      // Get current volume directly from player if possible
+      let currentVolume = volume;
+      try {
+        if (playerRef.current && typeof playerRef.current.getVolume === 'function') {
+          const playerVolume = playerRef.current.getVolume();
+          console.log(`${title} player reports current volume (pomodoroStateChange): ${playerVolume}`);
+          // Only update if there's a significant difference
+          if (Math.abs(playerVolume - currentVolume) > 2) {
+            currentVolume = playerVolume;
+          }
+        }
+      } catch (error) {
+        console.error('Error getting player volume:', error);
       }
       
       // Update timer type locally
@@ -219,20 +260,17 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       
       console.log(`${title} player: Timer type changed to ${newTimerType}. Volume transition: ${currentVolume} -> ${targetVolume}`);
       
-      // Only fade if there's a significant difference in volume
-      if (Math.abs(currentVolume - targetVolume) > 1) {
-        // Use the new fadeVolume utility
-        fadeControlRef.current = fadeVolume(
-          playerRef.current,
-          currentVolume,
-          targetVolume,
-          1000,  // 1 second transition
-          (newVolume) => {
-            // Update the React state as the volume changes
-            setVolume(newVolume);
-          }
-        );
-      }
+      // Always perform the fade for the pomodoro timer transitions
+      fadeControlRef.current = fadeVolume(
+        playerRef.current,
+        currentVolume,
+        targetVolume,
+        1000,  // 1 second transition
+        (newVolume) => {
+          // Update the React state as the volume changes
+          setVolume(newVolume);
+        }
+      );
     };
     
     window.addEventListener('pomodoroStateChange' as any, handlePomodoroStateChange);
