@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import YouTubeEmbed from "./YouTubeEmbed";
@@ -116,6 +116,17 @@ const SoundMixer: FC = () => {
     "videoSettings", 
     DEFAULT_SETTINGS
   );
+  
+  // Auto-refresh videos on initial load to ensure proper loading
+  useEffect(() => {
+    // Wait for YouTube API to be ready and players to be initialized
+    const autoRefreshTimeout = setTimeout(() => {
+      console.log("Auto-refreshing videos on initial load");
+      refreshVideos();
+    }, 3000); // 3 second delay to ensure main players have a chance to initialize
+    
+    return () => clearTimeout(autoRefreshTimeout);
+  }, []);
 
   // Update music focus volume
   const updateMusicVolume = (volume: number) => {
