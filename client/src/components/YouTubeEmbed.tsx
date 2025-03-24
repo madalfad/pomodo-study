@@ -48,23 +48,58 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   // Extract YouTube video ID from URL
   useEffect(() => {
     const extractVideoId = (url: string): string | null => {
-      // Handle different YouTube URL formats
-      const regExp = /^.*(youtu.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
-      const match = url.match(regExp);
-      
-      if (match && match[2].length === 11) {
-        return match[2];
+      // Check if URL is empty
+      if (!url || url.trim() === '') {
+        console.log('Empty URL provided');
+        return null;
       }
       
-      // Handle YouTube live URLs
-      const liveRegExp = /^.*(youtu.be\/|live\/)([^#\&\?]*).*/;
-      const liveMatch = url.match(liveRegExp);
-      
-      if (liveMatch && liveMatch[2]) {
-        return liveMatch[2];
+      try {
+        // Handle different YouTube URL formats
+        // Standard video URL (youtube.com/watch?v=VIDEO_ID)
+        const standardRegExp = /^.*(youtu.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
+        const standardMatch = url.match(standardRegExp);
+        
+        if (standardMatch && standardMatch[2] && standardMatch[2].length === 11) {
+          console.log(`Extracted standard video ID: ${standardMatch[2]}`);
+          return standardMatch[2];
+        }
+        
+        // Handle YouTube livestream URLs
+        // Format 1: youtube.com/live/VIDEO_ID
+        const liveRegExp = /^.*(?:youtube\.com\/live\/)([^#\&\?]*).*/;
+        const liveMatch = url.match(liveRegExp);
+        
+        if (liveMatch && liveMatch[1]) {
+          console.log(`Extracted livestream ID: ${liveMatch[1]}`);
+          return liveMatch[1];
+        }
+        
+        // Format 2: livestreams with channel IDs (youtube.com/channel/CHANNEL_ID/live)
+        const channelLiveRegExp = /^.*(?:youtube\.com\/channel\/)([^\/]*)\/live.*/;
+        const channelLiveMatch = url.match(channelLiveRegExp);
+        
+        if (channelLiveMatch && channelLiveMatch[1]) {
+          console.log(`Extracted channel livestream: ${channelLiveMatch[1]}`);
+          // For channel livestreams, we'll use the channel ID with /live
+          return channelLiveMatch[1];
+        }
+        
+        // Short URL format (youtu.be/VIDEO_ID)
+        const shortUrlRegExp = /^.*youtu\.be\/([^#\&\?]*).*/;
+        const shortUrlMatch = url.match(shortUrlRegExp);
+        
+        if (shortUrlMatch && shortUrlMatch[1] && shortUrlMatch[1].length === 11) {
+          console.log(`Extracted short URL video ID: ${shortUrlMatch[1]}`);
+          return shortUrlMatch[1];
+        }
+        
+        console.log('No video ID found in URL:', url);
+        return null;
+      } catch (error) {
+        console.error('Error extracting video ID:', error);
+        return null;
       }
-      
-      return null;
     };
     
     const id = extractVideoId(url);
@@ -123,46 +158,121 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   
   // Initialize the YouTube player
   const initializePlayer = () => {
-    if (!videoId) return;
-    
-    // If a player already exists, destroy it
-    if (playerRef.current) {
-      playerRef.current.destroy();
+    if (!videoId) {
+      console.error('Cannot initialize player: No video ID available');
+      return;
     }
     
-    const playerId = `youtube-player-${title.toLowerCase().replace(/\s/g, '-')}`;
-    
-    // Create container if it doesn't exist
-    let playerContainer = document.getElementById(playerId);
-    if (!playerContainer) {
-      playerContainer = document.createElement('div');
-      playerContainer.id = playerId;
-      document.getElementById(`youtube-container-${title.toLowerCase().replace(/\s/g, '-')}`)?.appendChild(playerContainer);
-    }
-    
-    // Create new player
-    playerRef.current = new window.YT.Player(playerId, {
-      height: '200',
-      width: '100%',
-      videoId: videoId,
-      playerVars: {
-        autoplay: 1,
-        controls: 1,
-        rel: 0,
-        showinfo: 0,
-        mute: 0,
-        loop: 1
-      },
-      events: {
-        onReady: (event) => {
-          event.target.setVolume(volume);
-          // If it's a live stream, seek to the end
-          if (url.includes('live')) {
-            event.target.seekTo(event.target.getDuration(), true);
-          }
+    try {
+      console.log(`Initializing ${title} player with video ID: ${videoId}`);
+      
+      // If a player already exists, destroy it
+      if (playerRef.current) {
+        console.log(`Destroying existing ${title} player instance`);
+        try {
+          playerRef.current.destroy();
+        } catch (error) {
+          console.error(`Error destroying player:`, error);
         }
       }
-    });
+      
+      const playerId = `youtube-player-${title.toLowerCase().replace(/\s/g, '-')}`;
+      const containerId = `youtube-container-${title.toLowerCase().replace(/\s/g, '-')}`;
+      
+      console.log(`Creating player with ID: ${playerId} in container: ${containerId}`);
+      
+      // Create container if it doesn't exist
+      const containerElement = document.getElementById(containerId);
+      if (!containerElement) {
+        console.error(`Container element #${containerId} not found!`);
+        return;
+      }
+      
+      // Clear existing content in the container
+      containerElement.innerHTML = '';
+      
+      // Create a new container for the player
+      const playerContainer = document.createElement('div');
+      playerContainer.id = playerId;
+      containerElement.appendChild(playerContainer);
+      
+      // Determine if this is a livestream
+      const isLivestream = url.toLowerCase().includes('live');
+      console.log(`URL contains 'live'? ${isLivestream}`);
+      
+      // Configure player
+      const playerConfig = {
+        height: '200',
+        width: '100%',
+        videoId: videoId,
+        playerVars: {
+          autoplay: 1,
+          controls: 1,
+          rel: 0,
+          showinfo: 0,
+          mute: 0,
+          loop: 1,
+          enablejsapi: 1,
+          origin: window.location.origin,
+          playsinline: 1
+        },
+        events: {
+          onReady: (event: any) => {
+            console.log(`${title} player ready!`);
+            try {
+              // Set initial volume
+              event.target.setVolume(volume);
+              
+              // Special handling for livestreams
+              if (isLivestream) {
+                console.log(`${title} is a livestream, seeking to end`);
+                
+                // For livestreams: first check if we can get duration
+                const duration = event.target.getDuration();
+                if (duration && duration > 0) {
+                  console.log(`Seeking to end of livestream, duration: ${duration}`);
+                  event.target.seekTo(duration, true);
+                } else {
+                  console.log(`Cannot determine livestream duration, continuing without seeking`);
+                }
+              }
+            } catch (error) {
+              console.error(`Error in onReady handler:`, error);
+            }
+          },
+          onError: (event: any) => {
+            const errorCodes = {
+              2: 'Invalid parameter',
+              5: 'HTML5 player error',
+              100: 'Video not found or removed',
+              101: 'Video embedding not allowed',
+              150: 'Video embedding not allowed (same as 101)'
+            };
+            const errorCode = event.data;
+            console.error(`YouTube player error (${errorCode}): ${(errorCodes as any)[errorCode] || 'Unknown error'}`);
+            
+            // If video embedding is not allowed, show a message
+            if (errorCode === 101 || errorCode === 150) {
+              const container = document.getElementById(containerId);
+              if (container) {
+                container.innerHTML = `
+                  <div class="flex items-center justify-center h-full bg-black text-white p-4 text-center">
+                    <p>This video doesn't allow embedding. Please choose another video in settings.</p>
+                  </div>
+                `;
+              }
+            }
+          }
+        }
+      };
+      
+      // Create new player
+      console.log(`Creating new ${title} YouTube player instance`);
+      playerRef.current = new window.YT.Player(playerId, playerConfig);
+      
+    } catch (error) {
+      console.error(`Failed to initialize ${title} player:`, error);
+    }
   };
   
   // Function to smoothly transition volume
