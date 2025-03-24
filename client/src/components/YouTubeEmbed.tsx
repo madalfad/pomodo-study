@@ -13,6 +13,7 @@ interface YouTubeEmbedProps {
   breakVolume: number;
   onVideoChange: (url: string) => void;
   onReset?: () => void; // Make optional to avoid errors
+  onTitleChange?: (title: string) => void; // Add callback for title changes
 }
 
 const YouTubeEmbed: FC<YouTubeEmbedProps> = ({ 
@@ -23,7 +24,8 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   initialVolume,
   breakVolume,
   onVideoChange,
-  onReset
+  onReset,
+  onTitleChange
 }) => {
   const [url, setUrl] = useState(defaultUrl);
   const [inputUrl, setInputUrl] = useState(defaultUrl);
@@ -224,6 +226,13 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
             try {
               // Set initial volume
               event.target.setVolume(volume);
+              
+              // Get video title and pass it to parent component
+              const videoTitle = event.target.getVideoData().title;
+              if (videoTitle && onTitleChange) {
+                console.log(`Retrieved video title for ${title}: ${videoTitle}`);
+                onTitleChange(videoTitle);
+              }
               
               // Special handling for livestreams
               if (isLivestream) {
