@@ -129,6 +129,7 @@ const PomodoroTimer: FC = () => {
     }
 
     // Dispatch custom event for sound mixer
+    console.log(`Dispatching pomodoroStateChange event: ${newTimerType}`);
     window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
       detail: { timerType: newTimerType }
     }));
@@ -157,7 +158,14 @@ const PomodoroTimer: FC = () => {
       clearInterval(timerRef.current);
     }
 
-    setTimerType('focus');
+    // When resetting the timer, make sure to dispatch the event to update audio volumes
+    const newTimerType = 'focus';
+    console.log(`Dispatching pomodoroStateChange event from reset: ${newTimerType}`);
+    window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
+      detail: { timerType: newTimerType }
+    }));
+
+    setTimerType(newTimerType);
     setCurrentCycle(1);
     setTimeRemaining(timerSettings.focusTime * 60);
     setIsRunning(false);
@@ -187,6 +195,12 @@ const PomodoroTimer: FC = () => {
       if (timerType === 'break') duration = breakValue;
       if (timerType === 'longBreak') duration = longBreakValue;
       setTimeRemaining(duration * 60);
+      
+      // After saving settings, notify audio components of the current timer type
+      console.log(`Dispatching pomodoroStateChange event from saveSettings: ${timerType}`);
+      window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
+        detail: { timerType }
+      }));
     }
 
     setShowSettings(false);

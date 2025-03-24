@@ -151,9 +151,16 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   
   // Function to smoothly transition volume
   const smoothVolumeTransition = (targetVol: number) => {
+    // If target volume is the same as current volume, no need to transition
+    if (targetVol === volume) {
+      console.log(`Volume already at target: ${targetVol}%, no transition needed`);
+      return;
+    }
+    
     // Cancel any ongoing transition
     if (transitionRef.current.animationId !== null) {
       cancelAnimationFrame(transitionRef.current.animationId);
+      console.log('Cancelled ongoing volume transition');
     }
     
     // Set up the transition parameters
@@ -161,6 +168,8 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     transitionRef.current.startVolume = volume;
     transitionRef.current.targetVolume = targetVol;
     transitionRef.current.startTime = performance.now();
+    
+    console.log(`Starting volume transition: ${transitionRef.current.startVolume}% → ${targetVol}%`);
     
     // Define the animation step
     const animateVolume = (timestamp: number) => {
@@ -190,6 +199,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       if (progress < 1) {
         transitionRef.current.animationId = requestAnimationFrame(animateVolume);
       } else {
+        console.log(`Volume transition complete: now at ${targetVol}%`);
         transitionRef.current.animationId = null;
       }
     };
@@ -241,11 +251,19 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   // For external Pomodoro timer to control volume
   useEffect(() => {
     const handlePomodoroStateChange = (event: CustomEvent) => {
-      if (event.detail.timerType === 'focus') {
+      // Extract the timer type from the event
+      const { timerType } = event.detail;
+      
+      // Debug logging to verify state change
+      console.log(`Pomodoro state changed to: ${timerType}`);
+      
+      if (timerType === 'focus') {
         // Smooth transition to focus volume
+        console.log(`Transitioning to focus volume: ${initialVolume}%`);
         smoothVolumeTransition(initialVolume);
-      } else {
+      } else if (timerType === 'break' || timerType === 'longBreak') {
         // Smooth transition to break volume
+        console.log(`Transitioning to break volume: ${breakVolume}%`);
         smoothVolumeTransition(breakVolume);
       }
     };
