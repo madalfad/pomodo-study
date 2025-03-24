@@ -173,7 +173,7 @@ const SoundMixer: FC = () => {
     const autoRefreshTimeout = setTimeout(() => {
       console.log("Auto-refreshing videos on initial load");
       refreshVideos();
-    }, 3000); // 3 second delay to ensure main players have a chance to initialize
+    }, 100); // .1 second delay to ensure main players have a chance to initialize
     
     return () => clearTimeout(autoRefreshTimeout);
   }, []);
