@@ -2,6 +2,7 @@ import { FC, useState, useEffect, useRef } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { fadeVolume } from '@/lib/volumeFader';
 
 interface YouTubeEmbedProps {
   defaultUrl: string;
@@ -27,6 +28,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   const [videoId, setVideoId] = useState<string | null>(null);
   const [timerType, setTimerType] = useState<'focus' | 'break' | 'longBreak'>('focus');
   const playerRef = useRef<any>(null);
+  const fadeIntervalRef = useRef<any>(null);
   
   // Extract YouTube video ID from URL
   useEffect(() => {
@@ -150,78 +152,105 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     }
   };
   
+  // Toggle between focus and break volume manually with fade transition
+  const toggleVolumeMode = () => {
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+    }
+    
+    const newTimerType = timerType === 'focus' ? 'break' : 'focus';
+    const currentVol = volume;
+    const targetVol = newTimerType === 'focus' ? initialVolume : breakVolume;
+    
+    console.log(`Manually toggling ${title} volume mode: ${timerType} -> ${newTimerType}`);
+    
+    setTimerType(newTimerType);
+    
+    fadeIntervalRef.current = fadeVolume(
+      playerRef.current,
+      currentVol,
+      targetVol,
+      1000,
+      (newVolume) => {
+        setVolume(newVolume);
+      }
+    );
+  };
+  
   // For external Pomodoro timer to control volume with smooth transition
   useEffect(() => {
-    const animateVolumeChange = (
-      startVolume: number, 
-      targetVolume: number, 
-      duration: number = 1000
-    ) => {
-      const startTime = Date.now();
-      const volumeDiff = targetVolume - startVolume;
-      
-      const updateVolume = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Use easeInOutQuad for smoother transition
-        const eased = progress < 0.5 
-          ? 2 * progress * progress 
-          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-        
-        const newVolume = Math.round(startVolume + volumeDiff * eased);
-        
-        if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-          try {
-            playerRef.current.setVolume(newVolume);
-            setVolume(newVolume);
-          } catch (error) {
-            console.log('Error setting volume during animation:', error);
-          }
-        }
-        
-        if (progress < 1) {
-          requestAnimationFrame(updateVolume);
-        }
-      };
-      
-      requestAnimationFrame(updateVolume);
-    };
-    
     const handlePomodoroStateChange = (event: CustomEvent) => {
-      const currentVolume = volume;
+      // Cancel any ongoing fade
+      if (fadeIntervalRef.current) {
+        clearInterval(fadeIntervalRef.current);
+        fadeIntervalRef.current = null;
+      }
+      
       const newTimerType = event.detail.timerType;
+      const currentVolume = volume;
+      
+      // Update timer type locally
       setTimerType(newTimerType);
       
+      // Determine target volume based on new timer type
       const targetVolume = newTimerType === 'focus' ? initialVolume : breakVolume;
       
-      // Only animate if there's a change in volume
-      if (currentVolume !== targetVolume) {
-        animateVolumeChange(currentVolume, targetVolume);
+      console.log(`${title} player: Timer type changed to ${newTimerType}. Volume transition: ${currentVolume} -> ${targetVolume}`);
+      
+      // Only fade if there's a significant difference in volume
+      if (Math.abs(currentVolume - targetVolume) > 1) {
+        // Use the new fadeVolume utility
+        fadeIntervalRef.current = fadeVolume(
+          playerRef.current,
+          currentVolume,
+          targetVolume,
+          1000,  // 1 second transition
+          (newVolume) => {
+            // Update the React state as the volume changes
+            setVolume(newVolume);
+          }
+        );
       }
     };
     
     window.addEventListener('pomodoroStateChange' as any, handlePomodoroStateChange);
     
     return () => {
+      // Clean up event listener and any ongoing fade
       window.removeEventListener('pomodoroStateChange' as any, handlePomodoroStateChange);
+      if (fadeIntervalRef.current) {
+        clearInterval(fadeIntervalRef.current);
+      }
     };
-  }, [initialVolume, breakVolume, volume]);
+  }, [initialVolume, breakVolume, volume, title]);
   
   return (
     <div className="youtube-embed">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-lg font-medium text-amber-400">{title}</h3>
-        <button 
-          onClick={() => setShowUrlInput(!showUrlInput)}
-          className="text-gray-400 hover:text-amber-400 transition-colors"
-          aria-label="Settings"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={toggleVolumeMode}
+            size="sm"
+            variant="outline"
+            className="h-8 px-2 text-xs bg-transparent border border-gray-600 hover:bg-gray-700"
+          >
+            <span className="mr-1">Mode:</span>
+            <span className={timerType === 'focus' ? 'text-green-400' : 'text-amber-400'}>
+              {timerType === 'focus' ? 'Focus' : 'Break'}
+            </span>
+          </Button>
+          <button 
+            onClick={() => setShowUrlInput(!showUrlInput)}
+            className="text-gray-400 hover:text-amber-400 transition-colors"
+            aria-label="Settings"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
       </div>
       
       {showUrlInput && (
