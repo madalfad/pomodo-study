@@ -65,6 +65,8 @@ const latLongToVector3 = (lat: number, lng: number, radius: number) => {
 const GlobeVisualization: FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeUsers, setActiveUsers] = useState<number>(0);
+  const [refreshCounter, setRefreshCounter] = useState<number>(0);
+  const [loadAttempts, setLoadAttempts] = useState<number>(0);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -200,12 +202,21 @@ const GlobeVisualization: FC = () => {
       
       // Remove renderer from DOM
       if (rendererRef.current && containerRef.current.contains(rendererRef.current.domElement)) {
-        containerRef.current.removeChild(rendererRef.current.domElement);
+        try {
+          containerRef.current.removeChild(rendererRef.current.domElement);
+        } catch (err) {
+          console.log("Error removing renderer:", err);
+        }
       }
       
       // Clear container completely
       while (containerRef.current.firstChild) {
-        containerRef.current.removeChild(containerRef.current.firstChild);
+        try {
+          containerRef.current.removeChild(containerRef.current.firstChild);
+        } catch (err) {
+          console.log("Error clearing container:", err);
+          break;
+        }
       }
       
       // Clean up Three.js resources
@@ -229,7 +240,13 @@ const GlobeVisualization: FC = () => {
       });
       
       // Clean up renderer
-      if (rendererRef.current) rendererRef.current.dispose();
+      if (rendererRef.current) {
+        try {
+          rendererRef.current.dispose();
+        } catch (err) {
+          console.log("Error disposing renderer:", err);
+        }
+      }
       
       // Reset all refs
       sceneRef.current = null;
@@ -241,6 +258,10 @@ const GlobeVisualization: FC = () => {
       
       // Force re-initialization
       isInitializedRef.current = false;
+      
+      // Explicitly force a re-run of the initialization effect by adding a state dependency
+      // We need this to trigger the useEffect that initializes the globe
+      setRefreshCounter(prev => prev + 1);
     }
     
     // Reset refreshing state after a short delay
@@ -249,47 +270,51 @@ const GlobeVisualization: FC = () => {
     }, 1000);
   };
   
-  // Force refresh on page load
+  // Force refresh on page load with multiple attempts
   useEffect(() => {
     console.log("Setting up forced globe refresh mechanism");
     
-    // First delay is short (500ms) - this is the initial attempt
-    refreshTimeoutRef.current = setTimeout(() => {
-      // Only refresh if the container exists but renderer is missing
-      if (containerRef.current && !rendererRef.current) {
-        console.log("Forcing initial globe refresh - first attempt");
-        
-        // Clean up any existing DOM elements
-        while (containerRef.current.firstChild) {
-          containerRef.current.removeChild(containerRef.current.firstChild);
-        }
-        
-        // Reset refs
-        sceneRef.current = null;
-        cameraRef.current = null;
-        rendererRef.current = null;
-        globeRef.current = null;
-        markersRef.current = [];
-        pulsesRef.current = [];
-        
-        // Force re-initialization
-        isInitializedRef.current = false;
-        
-        // Second chance with longer delay (2 seconds)
-        refreshTimeoutRef.current = setTimeout(() => {
-          if (containerRef.current && !rendererRef.current) {
-            console.log("Forcing globe refresh - second attempt");
-            // Clean up container again
+    // Immediately trigger a refresh counter increment on component mount
+    // This ensures we get at least one initialization attempt right away
+    setRefreshCounter(prev => prev + 1);
+    
+    // Series of timed refresh attempts to ensure the globe loads properly
+    const attemptSchedule = [100, 500, 1000, 2000, 3000]; // Multiple attempts at different delays
+    
+    // Schedule multiple refresh attempts
+    attemptSchedule.forEach((delay, index) => {
+      refreshTimeoutRef.current = setTimeout(() => {
+        // Check if we need to initialize (either no renderer or no globe)
+        if (containerRef.current && (!rendererRef.current || !globeRef.current)) {
+          console.log(`Forcing globe refresh - attempt ${index + 1} at ${delay}ms`);
+          
+          // Clean up any existing DOM elements
+          try {
             while (containerRef.current.firstChild) {
               containerRef.current.removeChild(containerRef.current.firstChild);
             }
-            
-            // Force re-initialization
-            isInitializedRef.current = false;
+          } catch (err) {
+            console.log("Error clearing container:", err);
           }
-        }, 2000);
-      }
-    }, 500);
+          
+          // Reset refs
+          sceneRef.current = null;
+          cameraRef.current = null;
+          rendererRef.current = null;
+          globeRef.current = null;
+          markersRef.current = [];
+          pulsesRef.current = [];
+          
+          // Force re-initialization by incrementing the refresh counter
+          setRefreshCounter(prev => prev + 1);
+          
+          // Force re-initialization flag
+          isInitializedRef.current = false;
+        } else {
+          console.log(`Refresh attempt ${index + 1} not needed, globe already initialized`);
+        }
+      }, delay);
+    });
     
     return () => {
       // Clean up any pending timeouts
@@ -301,7 +326,13 @@ const GlobeVisualization: FC = () => {
   
   // Initialize and setup the globe
   useEffect(() => {
-    if (!containerRef.current) return;
+    console.log(`Initializing globe (attempt: ${loadAttempts}, refresh: ${refreshCounter})`);
+    setLoadAttempts(prev => prev + 1);
+    
+    if (!containerRef.current) {
+      console.log("Container ref not available, cannot initialize globe");
+      return;
+    }
     
     // Get container dimensions
     const width = containerRef.current.clientWidth;
@@ -566,7 +597,7 @@ const GlobeVisualization: FC = () => {
       if (controls) controls.dispose();
       if (rendererRef.current) rendererRef.current.dispose();
     };
-  }, []);
+  }, [refreshCounter, loadAttempts]);
 
   return (
     <motion.div
