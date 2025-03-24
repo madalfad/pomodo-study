@@ -4,6 +4,53 @@ import { useLocalStorage } from "@/lib/useLocalStorage";
 import YouTubeEmbed from "./YouTubeEmbed";
 import { motion } from "framer-motion";
 
+// Helper function to extract YouTube video ID from URL
+const extractVideoId = (url: string): string | null => {
+  // Check if URL is empty
+  if (!url || url.trim() === '') {
+    console.log('Empty URL provided');
+    return null;
+  }
+  
+  try {
+    // Handle different YouTube URL formats
+    // Standard video URL (youtube.com/watch?v=VIDEO_ID)
+    const standardRegExp = /^.*(youtu.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
+    const standardMatch = url.match(standardRegExp);
+    
+    if (standardMatch && standardMatch[2] && standardMatch[2].length === 11) {
+      console.log(`Extracted standard video ID: ${standardMatch[2]}`);
+      return standardMatch[2];
+    }
+    
+    // Handle YouTube livestream URLs
+    // Format 1: youtube.com/live/VIDEO_ID
+    const liveRegExp = /^.*(?:youtube\.com\/live\/)([^#\&\?]*).*/;
+    const liveMatch = url.match(liveRegExp);
+    
+    if (liveMatch && liveMatch[1]) {
+      console.log(`Extracted livestream ID: ${liveMatch[1]}`);
+      return liveMatch[1];
+    }
+    
+    // Short URL format (youtu.be/VIDEO_ID)
+    const shortUrlRegExp = /^.*youtu\.be\/([^#\&\?]*).*/;
+    const shortUrlMatch = url.match(shortUrlRegExp);
+    
+    if (shortUrlMatch && shortUrlMatch[1]) {
+      const videoId = shortUrlMatch[1].split('?')[0].split('/')[0]; // Remove any additional path or query params
+      console.log(`Extracted short URL video ID: ${videoId}`);
+      return videoId;
+    }
+    
+    console.log('No video ID found in URL:', url);
+    return null;
+  } catch (error) {
+    console.error('Error extracting video ID:', error);
+    return null;
+  }
+};
+
 // Default settings
 const DEFAULT_SETTINGS = {
   musicUrl: "https://youtu.be/jfKfPfyJRdk",
@@ -179,6 +226,8 @@ const SoundMixer: FC = () => {
 
   // Reset all settings and force player rebuilds
   const resetAllSettings = () => {
+    console.log("Performing complete reset of all sound mixer settings");
+    
     // First clear URL values to trigger full rebuild
     setVideoSettings(prev => ({
       ...prev,
@@ -196,10 +245,39 @@ const SoundMixer: FC = () => {
       console.error("Failed to clear localStorage:", error);
     }
     
+    // Clean up existing players
+    const musicContainer = document.getElementById('youtube-container-music');
+    const ambienceContainer = document.getElementById('youtube-container-ambience');
+    
+    // Clear containers to ensure fresh rebuild
+    if (musicContainer) {
+      musicContainer.innerHTML = '';
+      console.log("Cleared music container for clean rebuild");
+    }
+    
+    if (ambienceContainer) {
+      ambienceContainer.innerHTML = '';
+      console.log("Cleared ambience container for clean rebuild");
+    }
+    
     // Then after a short delay, apply the actual defaults 
     setTimeout(() => {
       setVideoSettings(DEFAULT_SETTINGS);
       console.log("All settings reset to defaults with new YouTube URLs");
+      
+      // Force player initialization in next render cycle
+      setTimeout(() => {
+        console.log("Triggering manual players refresh after reset");
+        
+        // Extract videoId from default URLs and reinitialize
+        const musicVideoId = extractVideoId(DEFAULT_SETTINGS.musicUrl);
+        const ambienceVideoId = extractVideoId(DEFAULT_SETTINGS.ambienceUrl);
+        
+        console.log(`Extracted IDs for rebuild - Music: ${musicVideoId}, Ambience: ${ambienceVideoId}`);
+        
+        // Force a complete refresh of the page to ensure players are properly rebuilt
+        window.location.reload();
+      }, 100);
     }, 100);
   };
 
