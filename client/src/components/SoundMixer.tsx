@@ -104,14 +104,16 @@ const SoundMixer: FC = () => {
     // First clear the music URL to trigger a full rebuild
     setVideoSettings(prev => ({
       ...prev,
-      musicUrl: ''
+      musicUrl: '',
+      musicTitle: '' // Clear the title as well
     }));
     
     // Save current ambience settings
     const ambienceSettings = {
       ambienceUrl: videoSettings.ambienceUrl,
       ambienceWorkVolume: videoSettings.ambienceWorkVolume,
-      ambienceBreakVolume: videoSettings.ambienceBreakVolume
+      ambienceBreakVolume: videoSettings.ambienceBreakVolume,
+      ambienceTitle: videoSettings.ambienceTitle
     };
     
     // Force clear localStorage to ensure defaults are applied
@@ -128,6 +130,7 @@ const SoundMixer: FC = () => {
         musicUrl: DEFAULT_SETTINGS.musicUrl,
         musicWorkVolume: DEFAULT_SETTINGS.musicWorkVolume,
         musicBreakVolume: DEFAULT_SETTINGS.musicBreakVolume,
+        musicTitle: DEFAULT_SETTINGS.musicTitle, // Reset title to default (empty)
         // Restore ambience settings
         ...ambienceSettings
       });
@@ -140,14 +143,16 @@ const SoundMixer: FC = () => {
     // First clear the ambience URL to trigger a full rebuild
     setVideoSettings(prev => ({
       ...prev,
-      ambienceUrl: ''
+      ambienceUrl: '',
+      ambienceTitle: '' // Clear the title as well
     }));
     
     // Save current music settings
     const musicSettings = {
       musicUrl: videoSettings.musicUrl,
       musicWorkVolume: videoSettings.musicWorkVolume,
-      musicBreakVolume: videoSettings.musicBreakVolume
+      musicBreakVolume: videoSettings.musicBreakVolume,
+      musicTitle: videoSettings.musicTitle
     };
     
     // Force clear localStorage to ensure defaults are applied
@@ -164,6 +169,7 @@ const SoundMixer: FC = () => {
         ambienceUrl: DEFAULT_SETTINGS.ambienceUrl,
         ambienceWorkVolume: DEFAULT_SETTINGS.ambienceWorkVolume,
         ambienceBreakVolume: DEFAULT_SETTINGS.ambienceBreakVolume,
+        ambienceTitle: DEFAULT_SETTINGS.ambienceTitle, // Reset title to default (empty)
         // Restore music settings
         ...musicSettings
       });
@@ -177,7 +183,9 @@ const SoundMixer: FC = () => {
     setVideoSettings(prev => ({
       ...prev,
       musicUrl: '',
-      ambienceUrl: ''
+      ambienceUrl: '',
+      musicTitle: '',
+      ambienceTitle: ''
     }));
     
     // Force clear localStorage to ensure defaults are applied
@@ -256,8 +264,8 @@ const SoundMixer: FC = () => {
                 Reset All to Defaults
               </button>
               <div className="text-xs text-gray-500 max-w-md">
-                Music: Lofi Hip Hop Radio 📚 - beats to relax/study to<br/>
-                Ambience: Campfire by the River - Night Forest Nature Sounds
+                Music: {videoSettings.musicTitle || "Loading video title..."}<br/>
+                Ambience: {videoSettings.ambienceTitle || "Loading video title..."}
               </div>
             </div>
           </div>
