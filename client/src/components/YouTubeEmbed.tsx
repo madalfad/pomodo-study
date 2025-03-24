@@ -224,11 +224,15 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
           onReady: (event: any) => {
             console.log(`${title} player ready!`);
             try {
+              // Store the player instance directly for easier access
+              playerRef.current = event.target;
+              
               // Set initial volume
-              event.target.setVolume(volume);
+              playerRef.current.setVolume(volume);
+              console.log(`${title} player: Set initial volume to ${volume}%`);
               
               // Get video title and pass it to parent component
-              const videoTitle = event.target.getVideoData().title;
+              const videoTitle = playerRef.current.getVideoData().title;
               if (videoTitle && onTitleChange) {
                 console.log(`Retrieved video title for ${title}: ${videoTitle}`);
                 onTitleChange(videoTitle);
@@ -239,10 +243,10 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
                 console.log(`${title} is a livestream, seeking to end`);
                 
                 // For livestreams: first check if we can get duration
-                const duration = event.target.getDuration();
+                const duration = playerRef.current.getDuration();
                 if (duration && duration > 0) {
                   console.log(`Seeking to end of livestream, duration: ${duration}`);
-                  event.target.seekTo(duration, true);
+                  playerRef.current.seekTo(duration, true);
                 } else {
                   console.log(`Cannot determine livestream duration, continuing without seeking`);
                 }
@@ -367,6 +371,18 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   const handleVolumeChange = (newVolume: number) => {
     // For direct slider changes, update immediately (no transition)
     setVolume(newVolume);
+    
+    // Directly set the player volume if available
+    if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+      try {
+        playerRef.current.setVolume(newVolume);
+        console.log(`Directly set ${title} player volume to ${newVolume}%`);
+      } catch (error) {
+        console.error(`Error setting ${title} player volume:`, error);
+      }
+    }
+    
+    // Update parent state
     onVolumeChange(newVolume);
   };
   
@@ -633,9 +649,20 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
         <Slider
           value={[volume]}
           onValueChange={([newVolume]) => {
-            // Apply smooth transition for main volume slider too
-            smoothVolumeTransition(newVolume);
-            // Also update the work/focus volume setting
+            // Update state
+            setVolume(newVolume);
+            
+            // Set player volume directly
+            if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+              try {
+                playerRef.current.setVolume(newVolume);
+                console.log(`${title} slider: Set player volume to ${newVolume}%`);
+              } catch (error) {
+                console.error(`Error setting ${title} player volume:`, error);
+              }
+            }
+            
+            // Update the work/focus volume in parent component
             onVolumeChange(newVolume);
           }}
           max={100}
