@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import YouTubeEmbed from "./YouTubeEmbed";
@@ -116,128 +116,6 @@ const SoundMixer: FC = () => {
     "videoSettings", 
     DEFAULT_SETTINGS
   );
-  
-  // Refresh the video players without changing any settings
-  const refreshVideos = () => {
-    console.log("Refreshing YouTube players with current settings");
-    
-    // Clean up existing players
-    const musicContainer = document.getElementById('youtube-container-music');
-    const ambienceContainer = document.getElementById('youtube-container-ambience');
-    
-    // Clear containers to ensure fresh rebuild
-    if (musicContainer) {
-      musicContainer.innerHTML = '';
-      console.log("Cleared music container for refresh");
-    }
-    
-    if (ambienceContainer) {
-      ambienceContainer.innerHTML = '';
-      console.log("Cleared ambience container for refresh");
-    }
-    
-    // Short delay to ensure DOM is updated
-    setTimeout(() => {
-      // Create temporary player elements
-      if (musicContainer) {
-        const musicPlayerElement = document.createElement('div');
-        musicPlayerElement.id = 'youtube-player-music';
-        musicContainer.appendChild(musicPlayerElement);
-      }
-      
-      if (ambienceContainer) {
-        const ambiencePlayerElement = document.createElement('div');
-        ambiencePlayerElement.id = 'youtube-player-ambience';
-        ambienceContainer.appendChild(ambiencePlayerElement);
-      }
-      
-      // Extract videoId from current URLs
-      const musicVideoId = extractVideoId(videoSettings.musicUrl);
-      const ambienceVideoId = extractVideoId(videoSettings.ambienceUrl);
-      
-      console.log(`Extracted current IDs for refresh - Music: ${musicVideoId}, Ambience: ${ambienceVideoId}`);
-      
-      // Initialize players if YouTube API is available
-      if (window.YT && window.YT.Player) {
-        // Initialize music player
-        if (musicVideoId && musicContainer) {
-          console.log("Refreshing music player with current settings");
-          new window.YT.Player('youtube-player-music', {
-            height: '200',
-            width: '100%',
-            videoId: musicVideoId,
-            playerVars: {
-              autoplay: 1,
-              controls: 1,
-              rel: 0,
-              showinfo: 0,
-              mute: 0,
-              loop: 1,
-              origin: window.location.origin,
-              playsinline: 1
-            },
-            events: {
-              onReady: (event: any) => {
-                console.log("Music player refreshed and ready");
-                event.target.setVolume(videoSettings.musicWorkVolume);
-                
-                // Get video title and update state
-                const videoTitle = event.target.getVideoData().title;
-                if (videoTitle) {
-                  updateMusicTitle(videoTitle);
-                }
-              }
-            }
-          });
-        }
-        
-        // Initialize ambience player
-        if (ambienceVideoId && ambienceContainer) {
-          console.log("Refreshing ambience player with current settings");
-          new window.YT.Player('youtube-player-ambience', {
-            height: '200',
-            width: '100%',
-            videoId: ambienceVideoId,
-            playerVars: {
-              autoplay: 1,
-              controls: 1,
-              rel: 0,
-              showinfo: 0,
-              mute: 0,
-              loop: 1,
-              origin: window.location.origin,
-              playsinline: 1
-            },
-            events: {
-              onReady: (event: any) => {
-                console.log("Ambience player refreshed and ready");
-                event.target.setVolume(videoSettings.ambienceWorkVolume);
-                
-                // Get video title and update state
-                const videoTitle = event.target.getVideoData().title;
-                if (videoTitle) {
-                  updateAmbienceTitle(videoTitle);
-                }
-              }
-            }
-          });
-        }
-      } else {
-        console.log("YouTube API not available, players cannot be refreshed");
-      }
-    }, 100);
-  };
-  
-  // Force initial refresh of videos to ensure proper loading
-  useEffect(() => {
-    // Add a short delay to ensure the components are mounted
-    const initialLoadTimer = setTimeout(() => {
-      console.log("Performing initial video refresh to ensure proper loading");
-      refreshVideos();
-    }, 1500); // 1.5 second delay after initial mount
-    
-    return () => clearTimeout(initialLoadTimer);
-  }, [refreshVideos]);
 
   // Update music focus volume
   const updateMusicVolume = (volume: number) => {
@@ -384,6 +262,115 @@ const SoundMixer: FC = () => {
   };
 
   // Refresh the video players without changing any settings
+  const refreshVideos = () => {
+    console.log("Refreshing YouTube players with current settings");
+    
+    // Clean up existing players
+    const musicContainer = document.getElementById('youtube-container-music');
+    const ambienceContainer = document.getElementById('youtube-container-ambience');
+    
+    // Clear containers to ensure fresh rebuild
+    if (musicContainer) {
+      musicContainer.innerHTML = '';
+      console.log("Cleared music container for refresh");
+    }
+    
+    if (ambienceContainer) {
+      ambienceContainer.innerHTML = '';
+      console.log("Cleared ambience container for refresh");
+    }
+    
+    // Short delay to ensure DOM is updated
+    setTimeout(() => {
+      // Create temporary player elements
+      if (musicContainer) {
+        const musicPlayerElement = document.createElement('div');
+        musicPlayerElement.id = 'youtube-player-music';
+        musicContainer.appendChild(musicPlayerElement);
+      }
+      
+      if (ambienceContainer) {
+        const ambiencePlayerElement = document.createElement('div');
+        ambiencePlayerElement.id = 'youtube-player-ambience';
+        ambienceContainer.appendChild(ambiencePlayerElement);
+      }
+      
+      // Extract videoId from current URLs
+      const musicVideoId = extractVideoId(videoSettings.musicUrl);
+      const ambienceVideoId = extractVideoId(videoSettings.ambienceUrl);
+      
+      console.log(`Extracted current IDs for refresh - Music: ${musicVideoId}, Ambience: ${ambienceVideoId}`);
+      
+      // Initialize players if YouTube API is available
+      if (window.YT && window.YT.Player) {
+        // Initialize music player
+        if (musicVideoId && musicContainer) {
+          console.log("Refreshing music player with current settings");
+          new window.YT.Player('youtube-player-music', {
+            height: '200',
+            width: '100%',
+            videoId: musicVideoId,
+            playerVars: {
+              autoplay: 1,
+              controls: 1,
+              rel: 0,
+              showinfo: 0,
+              mute: 0,
+              loop: 1,
+              origin: window.location.origin,
+              playsinline: 1
+            },
+            events: {
+              onReady: (event: any) => {
+                console.log("Music player refreshed and ready");
+                event.target.setVolume(videoSettings.musicWorkVolume);
+                
+                // Get video title and update state
+                const videoTitle = event.target.getVideoData().title;
+                if (videoTitle) {
+                  updateMusicTitle(videoTitle);
+                }
+              }
+            }
+          });
+        }
+        
+        // Initialize ambience player
+        if (ambienceVideoId && ambienceContainer) {
+          console.log("Refreshing ambience player with current settings");
+          new window.YT.Player('youtube-player-ambience', {
+            height: '200',
+            width: '100%',
+            videoId: ambienceVideoId,
+            playerVars: {
+              autoplay: 1,
+              controls: 1,
+              rel: 0,
+              showinfo: 0,
+              mute: 0,
+              loop: 1,
+              origin: window.location.origin,
+              playsinline: 1
+            },
+            events: {
+              onReady: (event: any) => {
+                console.log("Ambience player refreshed and ready");
+                event.target.setVolume(videoSettings.ambienceWorkVolume);
+                
+                // Get video title and update state
+                const videoTitle = event.target.getVideoData().title;
+                if (videoTitle) {
+                  updateAmbienceTitle(videoTitle);
+                }
+              }
+            }
+          });
+        }
+      } else {
+        console.log("YouTube API not available, players cannot be refreshed");
+      }
+    }, 100);
+  };
   
   // Reset all settings and force player rebuilds
   const resetAllSettings = () => {
