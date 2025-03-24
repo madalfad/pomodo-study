@@ -15,9 +15,26 @@ export function fadeVolume(
   duration: number = 1000,
   onUpdate?: (currentVolume: number) => void
 ): NodeJS.Timeout {
-  // Ensure volumes are numbers
+  // Ensure volumes are numbers and get the absolute difference
   fromVolume = Number(fromVolume);
   toVolume = Number(toVolume);
+  const volumeDifference = Math.abs(toVolume - fromVolume);
+  
+  // If the difference is too small, just set the volume directly and return
+  if (volumeDifference < 2) {
+    try {
+      if (player && typeof player.setVolume === 'function') {
+        player.setVolume(toVolume);
+      }
+      if (onUpdate) {
+        onUpdate(toVolume);
+      }
+    } catch (error) {
+      console.error(`Error setting direct volume: ${error}`);
+    }
+    // Return a dummy timeout that does nothing
+    return setTimeout(() => {}, 0);
+  }
   
   // Get information about the player if available for logging
   let videoTitle = 'Unknown';
@@ -30,11 +47,23 @@ export function fadeVolume(
     videoTitle = 'Player';
   }
   
-  console.log(`Fading volume for ${videoTitle} from ${fromVolume} to ${toVolume} over ${duration}ms`);
+  console.log(`Fading volume for ${videoTitle} from ${fromVolume} to ${toVolume} over ${duration}ms (diff: ${volumeDifference})`);
+  
+  // Force a first update immediately 
+  if (player && typeof player.setVolume === 'function') {
+    try {
+      player.setVolume(fromVolume);
+    } catch (error) {
+      console.error(`Error setting initial volume: ${error}`);
+    }
+  }
+  if (onUpdate) {
+    onUpdate(fromVolume);
+  }
   
   // Setup fade parameters
   const stepTime = 20; // Update every 20ms for smoother transition
-  const steps = duration / stepTime;
+  const steps = Math.max(duration / stepTime, 10); // Ensure at least 10 steps
   const volumeStep = (toVolume - fromVolume) / steps;
   
   let currentVolume = fromVolume;
@@ -53,6 +82,7 @@ export function fadeVolume(
     // Apply volume to player
     try {
       if (player && typeof player.setVolume === 'function') {
+        // Use the actual floating point value for smoother transitions
         player.setVolume(Math.round(currentVolume));
       }
     } catch (error) {

@@ -154,23 +154,38 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   
   // Toggle between focus and break volume manually with fade transition
   const toggleVolumeMode = () => {
+    // Cancel any ongoing fade
     if (fadeIntervalRef.current) {
       clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
     }
     
     const newTimerType = timerType === 'focus' ? 'break' : 'focus';
     const currentVol = volume;
     const targetVol = newTimerType === 'focus' ? initialVolume : breakVolume;
     
-    console.log(`Manually toggling ${title} volume mode: ${timerType} -> ${newTimerType}`);
+    // Skip if the volume difference is too small
+    if (Math.abs(targetVol - currentVol) < 2) {
+      console.log(`Manually toggling ${title} volume mode: skipping fade (difference too small)`);
+      setTimerType(newTimerType);
+      setVolume(targetVol);
+      if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
+        playerRef.current.setVolume(targetVol);
+      }
+      return;
+    }
     
+    console.log(`Manually toggling ${title} volume mode: ${timerType} -> ${newTimerType} (${currentVol} -> ${targetVol})`);
+    
+    // Update state first
     setTimerType(newTimerType);
     
+    // Use our fade utility for a smooth transition
     fadeIntervalRef.current = fadeVolume(
       playerRef.current,
       currentVol,
       targetVol,
-      1000,
+      1000, // 1 second transition
       (newVolume) => {
         setVolume(newVolume);
       }
@@ -187,7 +202,14 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       }
       
       const newTimerType = event.detail.timerType;
+      const fromTimerType = event.detail.fromTimerType || timerType;
       const currentVolume = volume;
+      
+      // Skip if we're changing to the same timer type
+      if (newTimerType === timerType && newTimerType === fromTimerType) {
+        console.log(`${title} player: Skipping transition - already in ${newTimerType} mode`);
+        return;
+      }
       
       // Update timer type locally
       setTimerType(newTimerType);
