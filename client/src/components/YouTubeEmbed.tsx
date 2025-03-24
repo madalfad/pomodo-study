@@ -66,8 +66,17 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   
   // Make sure volume state syncs with props
   useEffect(() => {
-    setVolume(initialVolume);
-  }, [initialVolume]);
+    // Set current volume to the correct value for current timer state
+    const currentTimerType = localStorage.getItem('currentTimerType') || 'focus';
+    
+    if (currentTimerType === 'focus') {
+      setVolume(initialVolume);
+      console.log(`Initial load: Setting to focus volume: ${initialVolume}%`);
+    } else {
+      setVolume(breakVolume);
+      console.log(`Initial load: Setting to break volume: ${breakVolume}%`);
+    }
+  }, [initialVolume, breakVolume]);
   
   // Load YouTube API
   useEffect(() => {
@@ -151,11 +160,9 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   
   // Function to smoothly transition volume
   const smoothVolumeTransition = (targetVol: number) => {
-    // If target volume is the same as current volume, no need to transition
-    if (targetVol === volume) {
-      console.log(`Volume already at target: ${targetVol}%, no transition needed`);
-      return;
-    }
+    // Don't check current volume - we want to transition regardless
+    // This prevents issues when the player's current volume is out of sync with our state
+    console.log(`Request to transition volume to: ${targetVol}%`);
     
     // Cancel any ongoing transition
     if (transitionRef.current.animationId !== null) {

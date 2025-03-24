@@ -23,8 +23,21 @@ const PomodoroTimer: FC = () => {
     cyclesBeforeLongBreak: 4
   });
 
-  const [timerType, setTimerType] = useState<'focus' | 'break' | 'longBreak'>('focus');
-  const [timeRemaining, setTimeRemaining] = useState(timerSettings.focusTime * 60);
+  // Initialize timer type from localStorage if available
+  const [timerType, setTimerType] = useState<'focus' | 'break' | 'longBreak'>(() => {
+    const savedTimerType = localStorage.getItem('currentTimerType');
+    return (savedTimerType === 'focus' || savedTimerType === 'break' || savedTimerType === 'longBreak') 
+      ? savedTimerType as 'focus' | 'break' | 'longBreak'
+      : 'focus';
+  });
+  // Initialize time remaining based on the current timer type
+  const [timeRemaining, setTimeRemaining] = useState(() => {
+    const savedTimerType = localStorage.getItem('currentTimerType');
+    
+    if (savedTimerType === 'break') return timerSettings.breakTime * 60;
+    if (savedTimerType === 'longBreak') return timerSettings.longBreakTime * 60;
+    return timerSettings.focusTime * 60; // Default to focus
+  });
   const [isRunning, setIsRunning] = useState(false);
   const [currentCycle, setCurrentCycle] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
@@ -128,6 +141,9 @@ const PomodoroTimer: FC = () => {
       playTimerSound(TimerSounds.breakEnd, alertVolume);
     }
 
+    // Store current timer type in localStorage for persistence
+    localStorage.setItem('currentTimerType', newTimerType);
+    
     // Dispatch custom event for sound mixer
     console.log(`Dispatching pomodoroStateChange event: ${newTimerType}`);
     window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
@@ -160,6 +176,10 @@ const PomodoroTimer: FC = () => {
 
     // When resetting the timer, make sure to dispatch the event to update audio volumes
     const newTimerType = 'focus';
+    
+    // Store current timer type in localStorage for persistence
+    localStorage.setItem('currentTimerType', newTimerType);
+    
     console.log(`Dispatching pomodoroStateChange event from reset: ${newTimerType}`);
     window.dispatchEvent(new CustomEvent('pomodoroStateChange', { 
       detail: { timerType: newTimerType }
