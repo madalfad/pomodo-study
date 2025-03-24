@@ -45,64 +45,65 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     forceStartVolume: false
   });
   
-  // Extract YouTube video ID from URL
-  useEffect(() => {
-    const extractVideoId = (url: string): string | null => {
-      // Check if URL is empty
-      if (!url || url.trim() === '') {
-        console.log('Empty URL provided');
-        return null;
+  // Extract YouTube video ID from URL - defining outside useEffect for reuse
+  const extractVideoId = (url: string): string | null => {
+    // Check if URL is empty
+    if (!url || url.trim() === '') {
+      console.log('Empty URL provided');
+      return null;
+    }
+    
+    try {
+      // Handle different YouTube URL formats
+      // Standard video URL (youtube.com/watch?v=VIDEO_ID)
+      const standardRegExp = /^.*(youtu.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
+      const standardMatch = url.match(standardRegExp);
+      
+      if (standardMatch && standardMatch[2] && standardMatch[2].length === 11) {
+        console.log(`Extracted standard video ID: ${standardMatch[2]}`);
+        return standardMatch[2];
       }
       
-      try {
-        // Handle different YouTube URL formats
-        // Standard video URL (youtube.com/watch?v=VIDEO_ID)
-        const standardRegExp = /^.*(youtu.be\/|v\/|e\/|u\/\w+\/|embed\/|v=)([^#\&\?]*).*/;
-        const standardMatch = url.match(standardRegExp);
-        
-        if (standardMatch && standardMatch[2] && standardMatch[2].length === 11) {
-          console.log(`Extracted standard video ID: ${standardMatch[2]}`);
-          return standardMatch[2];
-        }
-        
-        // Handle YouTube livestream URLs
-        // Format 1: youtube.com/live/VIDEO_ID
-        const liveRegExp = /^.*(?:youtube\.com\/live\/)([^#\&\?]*).*/;
-        const liveMatch = url.match(liveRegExp);
-        
-        if (liveMatch && liveMatch[1]) {
-          console.log(`Extracted livestream ID: ${liveMatch[1]}`);
-          return liveMatch[1];
-        }
-        
-        // Format 2: livestreams with channel IDs (youtube.com/channel/CHANNEL_ID/live)
-        const channelLiveRegExp = /^.*(?:youtube\.com\/channel\/)([^\/]*)\/live.*/;
-        const channelLiveMatch = url.match(channelLiveRegExp);
-        
-        if (channelLiveMatch && channelLiveMatch[1]) {
-          console.log(`Extracted channel livestream: ${channelLiveMatch[1]}`);
-          // For channel livestreams, we'll use the channel ID with /live
-          return channelLiveMatch[1];
-        }
-        
-        // Short URL format (youtu.be/VIDEO_ID) - more permissive matching
-        const shortUrlRegExp = /^.*youtu\.be\/([^#\&\?]*).*/;
-        const shortUrlMatch = url.match(shortUrlRegExp);
-        
-        if (shortUrlMatch && shortUrlMatch[1]) {
-          const videoId = shortUrlMatch[1].split('?')[0].split('/')[0]; // Remove any additional path or query params
-          console.log(`Extracted short URL video ID: ${videoId}`);
-          return videoId;
-        }
-        
-        console.log('No video ID found in URL:', url);
-        return null;
-      } catch (error) {
-        console.error('Error extracting video ID:', error);
-        return null;
+      // Handle YouTube livestream URLs
+      // Format 1: youtube.com/live/VIDEO_ID
+      const liveRegExp = /^.*(?:youtube\.com\/live\/)([^#\&\?]*).*/;
+      const liveMatch = url.match(liveRegExp);
+      
+      if (liveMatch && liveMatch[1]) {
+        console.log(`Extracted livestream ID: ${liveMatch[1]}`);
+        return liveMatch[1];
       }
-    };
-    
+      
+      // Format 2: livestreams with channel IDs (youtube.com/channel/CHANNEL_ID/live)
+      const channelLiveRegExp = /^.*(?:youtube\.com\/channel\/)([^\/]*)\/live.*/;
+      const channelLiveMatch = url.match(channelLiveRegExp);
+      
+      if (channelLiveMatch && channelLiveMatch[1]) {
+        console.log(`Extracted channel livestream: ${channelLiveMatch[1]}`);
+        // For channel livestreams, we'll use the channel ID with /live
+        return channelLiveMatch[1];
+      }
+      
+      // Short URL format (youtu.be/VIDEO_ID) - more permissive matching
+      const shortUrlRegExp = /^.*youtu\.be\/([^#\&\?]*).*/;
+      const shortUrlMatch = url.match(shortUrlRegExp);
+      
+      if (shortUrlMatch && shortUrlMatch[1]) {
+        const videoId = shortUrlMatch[1].split('?')[0].split('/')[0]; // Remove any additional path or query params
+        console.log(`Extracted short URL video ID: ${videoId}`);
+        return videoId;
+      }
+      
+      console.log('No video ID found in URL:', url);
+      return null;
+    } catch (error) {
+      console.error('Error extracting video ID:', error);
+      return null;
+    }
+  };
+
+  // Update videoId when URL changes
+  useEffect(() => {
     const id = extractVideoId(url);
     setVideoId(id);
   }, [url]);
@@ -385,17 +386,35 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       }
     }
     
-    // Update the URL
-    setUrl(inputUrl);
-    onVideoChange(inputUrl);
+    // Clear the DOM container to ensure fresh rebuild
+    const containerId = `youtube-container-${title.toLowerCase().replace(/\s/g, '-')}`;
+    const containerElement = document.getElementById(containerId);
+    if (containerElement) {
+      containerElement.innerHTML = '';
+      console.log(`Cleared ${title} container for clean rebuild`);
+    }
     
-    // Force videoId extraction and player initialization in next render cycle
+    // Update the URL - use a temporary empty value first to force state change 
+    // even if the same URL is entered again
+    setUrl('');
+    
+    // Then set the actual URL after a small delay
     setTimeout(() => {
-      console.log(`Triggering manual player refresh for ${title}`);
-      if (videoId) {
-        initializePlayer();
-      }
-    }, 100);
+      setUrl(inputUrl);
+      onVideoChange(inputUrl);
+      
+      // Force player initialization in next render cycle
+      setTimeout(() => {
+        console.log(`Triggering manual player refresh for ${title}`);
+        const newVideoId = extractVideoId(inputUrl);
+        if (newVideoId) {
+          setVideoId(newVideoId);
+          initializePlayer();
+        } else {
+          console.error(`Failed to extract video ID from ${inputUrl}`);
+        }
+      }, 100);
+    }, 50);
     
     // Close settings panel
     setShowUrlInput(false);
@@ -416,6 +435,14 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       }
     }
     
+    // Clear the DOM container to ensure fresh rebuild
+    const containerId = `youtube-container-${title.toLowerCase().replace(/\s/g, '-')}`;
+    const containerElement = document.getElementById(containerId);
+    if (containerElement) {
+      containerElement.innerHTML = '';
+      console.log(`Cleared ${title} container for clean rebuild`);
+    }
+    
     // Reset to default values via parent callback
     if (onReset) {
       onReset();
@@ -424,11 +451,22 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     // Update the input URL field in case it was changed but not applied
     setInputUrl(defaultUrl);
     
+    // Clear videoId to force rebuild
+    setVideoId(null);
+    
     // Force a player refresh after a short delay to ensure defaults are loaded
     setTimeout(() => {
       console.log(`Forcing player refresh after reset for ${title}`);
-      if (videoId) {
-        initializePlayer();
+      
+      // Extract videoId from default URL and reinitialize
+      const newVideoId = extractVideoId(defaultUrl);
+      if (newVideoId) {
+        setVideoId(newVideoId);
+        setTimeout(() => {
+          initializePlayer();
+        }, 50);
+      } else {
+        console.error(`Failed to extract video ID from default URL`);
       }
     }, 100);
     

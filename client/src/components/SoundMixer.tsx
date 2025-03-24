@@ -85,14 +85,30 @@ const SoundMixer: FC = () => {
       musicUrl: ''
     }));
     
+    // Save current ambience settings
+    const ambienceSettings = {
+      ambienceUrl: videoSettings.ambienceUrl,
+      ambienceWorkVolume: videoSettings.ambienceWorkVolume,
+      ambienceBreakVolume: videoSettings.ambienceBreakVolume
+    };
+    
+    // Force clear localStorage to ensure defaults are applied
+    try {
+      localStorage.removeItem('videoSettings');
+      console.log("Cleared video settings from localStorage for music reset");
+    } catch (error) {
+      console.error("Failed to clear localStorage:", error);
+    }
+    
     // Then apply the actual defaults after a short delay
     setTimeout(() => {
-      setVideoSettings(prev => ({
-        ...prev,
+      setVideoSettings({
         musicUrl: DEFAULT_SETTINGS.musicUrl,
         musicWorkVolume: DEFAULT_SETTINGS.musicWorkVolume,
-        musicBreakVolume: DEFAULT_SETTINGS.musicBreakVolume
-      }));
+        musicBreakVolume: DEFAULT_SETTINGS.musicBreakVolume,
+        // Restore ambience settings
+        ...ambienceSettings
+      });
       console.log("Music settings reset to defaults");
     }, 100);
   };
@@ -105,26 +121,50 @@ const SoundMixer: FC = () => {
       ambienceUrl: ''
     }));
     
+    // Save current music settings
+    const musicSettings = {
+      musicUrl: videoSettings.musicUrl,
+      musicWorkVolume: videoSettings.musicWorkVolume,
+      musicBreakVolume: videoSettings.musicBreakVolume
+    };
+    
+    // Force clear localStorage to ensure defaults are applied
+    try {
+      localStorage.removeItem('videoSettings');
+      console.log("Cleared video settings from localStorage for ambience reset");
+    } catch (error) {
+      console.error("Failed to clear localStorage:", error);
+    }
+    
     // Then apply the actual defaults after a short delay
     setTimeout(() => {
-      setVideoSettings(prev => ({
-        ...prev,
+      setVideoSettings({
         ambienceUrl: DEFAULT_SETTINGS.ambienceUrl,
         ambienceWorkVolume: DEFAULT_SETTINGS.ambienceWorkVolume,
-        ambienceBreakVolume: DEFAULT_SETTINGS.ambienceBreakVolume
-      }));
+        ambienceBreakVolume: DEFAULT_SETTINGS.ambienceBreakVolume,
+        // Restore music settings
+        ...musicSettings
+      });
       console.log("Ambience settings reset to defaults");
     }, 100);
   };
 
   // Reset all settings and force player rebuilds
   const resetAllSettings = () => {
-    // First clear the URL values to trigger a full rebuild
+    // First clear URL values to trigger full rebuild
     setVideoSettings(prev => ({
       ...prev,
       musicUrl: '',
       ambienceUrl: ''
     }));
+    
+    // Force clear localStorage to ensure defaults are applied
+    try {
+      localStorage.removeItem('videoSettings');
+      console.log("Cleared video settings from localStorage");
+    } catch (error) {
+      console.error("Failed to clear localStorage:", error);
+    }
     
     // Then after a short delay, apply the actual defaults 
     setTimeout(() => {
@@ -181,15 +221,21 @@ const SoundMixer: FC = () => {
               The YouTube embeds will automatically adjust volume when your Pomodoro timer switches between focus and break.
             </p>
             
-            <button 
-              onClick={resetAllSettings}
-              className="inline-flex items-center text-xs text-amber-400 hover:text-amber-500 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Reset All to YouTube Defaults
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button 
+                onClick={resetAllSettings}
+                className="inline-flex items-center text-xs text-amber-400 hover:text-amber-500 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reset All to YouTube Defaults
+              </button>
+              <div className="text-xs text-gray-500 max-w-md">
+                Music: Lofi Hip Hop Radio 📚 - beats to relax/study to<br/>
+                Ambience: Campfire by the River - Night Forest Nature Sounds
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
