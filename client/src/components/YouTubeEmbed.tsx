@@ -31,11 +31,18 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   const [volume, setVolume] = useState(initialVolume);
   const [videoId, setVideoId] = useState<string | null>(null);
   const playerRef = useRef<any>(null);
-  const transitionRef = useRef<{ animationId: number | null, startVolume: number, targetVolume: number, startTime: number }>({
+  const transitionRef = useRef<{ 
+    animationId: number | null, 
+    startVolume: number, 
+    targetVolume: number, 
+    startTime: number,
+    forceStartVolume: boolean 
+  }>({
     animationId: null,
     startVolume: initialVolume,
     targetVolume: initialVolume,
-    startTime: 0
+    startTime: 0,
+    forceStartVolume: false
   });
   
   // Extract YouTube video ID from URL
@@ -172,7 +179,16 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     
     // Set up the transition parameters
     const duration = 1000; // 1 second transition
-    transitionRef.current.startVolume = volume;
+    
+    // Only use stored startVolume if it's been manually set by event handler,
+    // otherwise use current volume
+    if (!transitionRef.current.forceStartVolume) {
+      transitionRef.current.startVolume = volume;
+    }
+    
+    // Clear the force flag after using it
+    transitionRef.current.forceStartVolume = false;
+    
     transitionRef.current.targetVolume = targetVol;
     transitionRef.current.startTime = performance.now();
     
@@ -265,12 +281,30 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       console.log(`Pomodoro state changed to: ${timerType}`);
       
       if (timerType === 'focus') {
+        // Store current player volume before transitioning
+        const currentVol = playerRef.current && 
+          typeof playerRef.current.setVolume === 'function' ? 
+          playerRef.current.getVolume?.() : volume;
+          
+        // Force a different value for transitionRef to ensure transition works
+        transitionRef.current.startVolume = currentVol || breakVolume;
+        transitionRef.current.forceStartVolume = true;
+        
         // Smooth transition to focus volume
-        console.log(`Transitioning to focus volume: ${initialVolume}%`);
+        console.log(`Transitioning to focus volume: ${initialVolume}% from ${transitionRef.current.startVolume}%`);
         smoothVolumeTransition(initialVolume);
       } else if (timerType === 'break' || timerType === 'longBreak') {
+        // Store current player volume before transitioning
+        const currentVol = playerRef.current && 
+          typeof playerRef.current.setVolume === 'function' ? 
+          playerRef.current.getVolume?.() : volume;
+          
+        // Force a different value for transitionRef to ensure transition works
+        transitionRef.current.startVolume = currentVol || initialVolume;
+        transitionRef.current.forceStartVolume = true;
+        
         // Smooth transition to break volume
-        console.log(`Transitioning to break volume: ${breakVolume}%`);
+        console.log(`Transitioning to break volume: ${breakVolume}% from ${transitionRef.current.startVolume}%`);
         smoothVolumeTransition(breakVolume);
       }
     };
