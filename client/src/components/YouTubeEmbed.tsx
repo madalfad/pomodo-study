@@ -28,7 +28,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   const [videoId, setVideoId] = useState<string | null>(null);
   const [timerType, setTimerType] = useState<'focus' | 'break' | 'longBreak'>('focus');
   const playerRef = useRef<any>(null);
-  const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fadeControlRef = useRef<{ cancel: () => void } | null>(null);
   
   // Extract YouTube video ID from URL
   useEffect(() => {
@@ -155,9 +155,9 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   // Toggle between focus and break volume manually with fade transition
   const toggleVolumeMode = () => {
     // Cancel any ongoing fade
-    if (fadeIntervalRef.current) {
-      clearInterval(fadeIntervalRef.current);
-      fadeIntervalRef.current = null;
+    if (fadeControlRef.current) {
+      fadeControlRef.current.cancel();
+      fadeControlRef.current = null;
     }
     
     const newTimerType = timerType === 'focus' ? 'break' : 'focus';
@@ -181,7 +181,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     setTimerType(newTimerType);
     
     // Use our fade utility for a smooth transition
-    fadeIntervalRef.current = fadeVolume(
+    fadeControlRef.current = fadeVolume(
       playerRef.current,
       currentVol,
       targetVol,
@@ -196,9 +196,9 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
   useEffect(() => {
     const handlePomodoroStateChange = (event: CustomEvent) => {
       // Cancel any ongoing fade
-      if (fadeIntervalRef.current) {
-        clearInterval(fadeIntervalRef.current);
-        fadeIntervalRef.current = null;
+      if (fadeControlRef.current) {
+        fadeControlRef.current.cancel();
+        fadeControlRef.current = null;
       }
       
       const newTimerType = event.detail.timerType;
@@ -222,7 +222,7 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
       // Only fade if there's a significant difference in volume
       if (Math.abs(currentVolume - targetVolume) > 1) {
         // Use the new fadeVolume utility
-        fadeIntervalRef.current = fadeVolume(
+        fadeControlRef.current = fadeVolume(
           playerRef.current,
           currentVolume,
           targetVolume,
@@ -240,8 +240,8 @@ const YouTubeEmbed: FC<YouTubeEmbedProps> = ({
     return () => {
       // Clean up event listener and any ongoing fade
       window.removeEventListener('pomodoroStateChange' as any, handlePomodoroStateChange);
-      if (fadeIntervalRef.current) {
-        clearInterval(fadeIntervalRef.current);
+      if (fadeControlRef.current) {
+        fadeControlRef.current.cancel();
       }
     };
   }, [initialVolume, breakVolume, volume, title]);
