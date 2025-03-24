@@ -70,6 +70,7 @@ const GlobeVisualization: FC = () => {
   const markersRef = useRef<THREE.Mesh[]>([]);
   const animationFrameRef = useRef<number>();
   const pulsesRef = useRef<{mesh: THREE.Mesh, maxScale: number, speed: number}[]>([]);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Generate user data
   const fetchUserLocations = async (): Promise<ActiveUser[]> => {
@@ -164,6 +165,59 @@ const GlobeVisualization: FC = () => {
     return users;
   };
 
+  // Reference to store initialization state
+  const isInitializedRef = useRef(false);
+  
+  // Force refresh on page load
+  useEffect(() => {
+    console.log("Setting up forced globe refresh mechanism");
+    
+    // First delay is short (500ms) - this is the initial attempt
+    refreshTimeoutRef.current = setTimeout(() => {
+      // Only refresh if the container exists but renderer is missing
+      if (containerRef.current && !rendererRef.current) {
+        console.log("Forcing initial globe refresh - first attempt");
+        
+        // Clean up any existing DOM elements
+        while (containerRef.current.firstChild) {
+          containerRef.current.removeChild(containerRef.current.firstChild);
+        }
+        
+        // Reset refs
+        sceneRef.current = null;
+        cameraRef.current = null;
+        rendererRef.current = null;
+        globeRef.current = null;
+        markersRef.current = [];
+        pulsesRef.current = [];
+        
+        // Force re-initialization
+        isInitializedRef.current = false;
+        
+        // Second chance with longer delay (2 seconds)
+        refreshTimeoutRef.current = setTimeout(() => {
+          if (containerRef.current && !rendererRef.current) {
+            console.log("Forcing globe refresh - second attempt");
+            // Clean up container again
+            while (containerRef.current.firstChild) {
+              containerRef.current.removeChild(containerRef.current.firstChild);
+            }
+            
+            // Force re-initialization
+            isInitializedRef.current = false;
+          }
+        }, 2000);
+      }
+    }, 500);
+    
+    return () => {
+      // Clean up any pending timeouts
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
+  
   // Initialize and setup the globe
   useEffect(() => {
     if (!containerRef.current) return;
