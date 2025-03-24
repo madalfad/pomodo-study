@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import YouTubeEmbed from "./YouTubeEmbed";
@@ -117,6 +117,10 @@ const SoundMixer: FC = () => {
     DEFAULT_SETTINGS
   );
   
+  // Create refs to directly access the YouTube player instances
+  const musicPlayerRef = useRef<any>(null);
+  const ambiencePlayerRef = useRef<any>(null);
+  
   // Initialize both music and ambience players on initial load
   useEffect(() => {
     // Initialize music player explicitly - it doesn't initialize automatically like ambience player
@@ -155,10 +159,15 @@ const SoundMixer: FC = () => {
             events: {
               onReady: (event: any) => {
                 console.log("Music player ready!");
-                event.target.setVolume(videoSettings.musicWorkVolume);
+                // Store player reference for direct volume control
+                musicPlayerRef.current = event.target;
+                
+                // Set initial volume
+                musicPlayerRef.current.setVolume(videoSettings.musicWorkVolume);
+                console.log(`Set music volume directly to ${videoSettings.musicWorkVolume}%`);
                 
                 // Get video title and update state
-                const videoTitle = event.target.getVideoData().title;
+                const videoTitle = musicPlayerRef.current.getVideoData().title;
                 if (videoTitle) {
                   updateMusicTitle(videoTitle);
                 }
@@ -180,10 +189,33 @@ const SoundMixer: FC = () => {
 
   // Update music focus volume
   const updateMusicVolume = (volume: number) => {
+    // Update state
     setVideoSettings(prev => ({
       ...prev,
       musicWorkVolume: volume
     }));
+    
+    // Update the actual player volume directly
+    const musicPlayer = document.getElementById('youtube-player-music');
+    if (musicPlayer && window.YT && window.YT.Player) {
+      try {
+        // Find the player instance already operating in the DOM
+        const players = document.querySelectorAll('iframe[src*="youtube.com"]');
+        for (let i = 0; i < players.length; i++) {
+          const player = players[i] as HTMLIFrameElement;
+          if (player.id.includes('music')) {
+            // Get the YouTube player instance from the iframe
+            const playerInstance = (player as any).getIFrameApiPlayer?.();
+            if (playerInstance && typeof playerInstance.setVolume === 'function') {
+              playerInstance.setVolume(volume);
+              console.log(`Direct volume change applied to music player: ${volume}%`);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error setting music volume directly:', e);
+      }
+    }
   };
 
   // Update music break volume
@@ -192,14 +224,38 @@ const SoundMixer: FC = () => {
       ...prev,
       musicBreakVolume: volume
     }));
+    console.log(`Music break volume updated to ${volume}%`);
   };
 
   // Update ambience focus volume
   const updateAmbienceVolume = (volume: number) => {
+    // Update state
     setVideoSettings(prev => ({
       ...prev,
       ambienceWorkVolume: volume
     }));
+    
+    // Update the actual player volume directly
+    const ambiencePlayer = document.getElementById('youtube-player-ambience');
+    if (ambiencePlayer && window.YT && window.YT.Player) {
+      try {
+        // Find the player instance already operating in the DOM
+        const players = document.querySelectorAll('iframe[src*="youtube.com"]');
+        for (let i = 0; i < players.length; i++) {
+          const player = players[i] as HTMLIFrameElement;
+          if (player.id.includes('ambience')) {
+            // Get the YouTube player instance from the iframe
+            const playerInstance = (player as any).getIFrameApiPlayer?.();
+            if (playerInstance && typeof playerInstance.setVolume === 'function') {
+              playerInstance.setVolume(volume);
+              console.log(`Direct volume change applied to ambience player: ${volume}%`);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error setting ambience volume directly:', e);
+      }
+    }
   };
 
   // Update ambience break volume
@@ -208,6 +264,7 @@ const SoundMixer: FC = () => {
       ...prev,
       ambienceBreakVolume: volume
     }));
+    console.log(`Ambience break volume updated to ${volume}%`);
   };
 
   // Update music URL
@@ -384,7 +441,11 @@ const SoundMixer: FC = () => {
             events: {
               onReady: (event: any) => {
                 console.log("Music player refreshed and ready");
-                event.target.setVolume(videoSettings.musicWorkVolume);
+                
+                // Set volume directly using the API
+                const volume = videoSettings.musicWorkVolume;
+                event.target.setVolume(volume);
+                console.log(`Applied refresh music volume: ${volume}%`);
                 
                 // Get video title and update state
                 const videoTitle = event.target.getVideoData().title;
@@ -416,7 +477,11 @@ const SoundMixer: FC = () => {
             events: {
               onReady: (event: any) => {
                 console.log("Ambience player refreshed and ready");
-                event.target.setVolume(videoSettings.ambienceWorkVolume);
+                
+                // Set volume directly using the API
+                const volume = videoSettings.ambienceWorkVolume;
+                event.target.setVolume(volume);
+                console.log(`Applied refresh ambience volume: ${volume}%`);
                 
                 // Get video title and update state
                 const videoTitle = event.target.getVideoData().title;
@@ -519,7 +584,11 @@ const SoundMixer: FC = () => {
               events: {
                 onReady: (event: any) => {
                   console.log("Music player rebuilt and ready");
-                  event.target.setVolume(DEFAULT_SETTINGS.musicWorkVolume);
+                  
+                  // Set volume directly using the API
+                  const volume = DEFAULT_SETTINGS.musicWorkVolume;
+                  event.target.setVolume(volume);
+                  console.log(`Applied rebuild music volume: ${volume}%`);
                   
                   // Get video title and update state
                   const videoTitle = event.target.getVideoData().title;
@@ -551,7 +620,11 @@ const SoundMixer: FC = () => {
               events: {
                 onReady: (event: any) => {
                   console.log("Ambience player rebuilt and ready");
-                  event.target.setVolume(DEFAULT_SETTINGS.ambienceWorkVolume);
+                  
+                  // Set volume directly using the API
+                  const volume = DEFAULT_SETTINGS.ambienceWorkVolume;
+                  event.target.setVolume(volume);
+                  console.log(`Applied rebuild ambience volume: ${volume}%`);
                   
                   // Get video title and update state
                   const videoTitle = event.target.getVideoData().title;
