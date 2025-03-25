@@ -61,7 +61,7 @@ const ToDoList: FC = () => {
           <form className="mb-4 flex items-center" onSubmit={addTask}>
             <input 
               type="text" 
-              className="flex-grow p-3 border border-gray-600 rounded-l-md focus:outline-none focus:border-amber-400 bg-gray-700 text-gray-200 font-workSans placeholder-gray-400"
+              className="flex-grow p-3 border border-r-0 border-gray-600 rounded-l-md focus:outline-none focus:border-amber-400 focus:border-r-0 bg-gray-700 text-gray-200 font-workSans placeholder-gray-400"
               placeholder="Add a task..."
               aria-label="Add a new task"
               value={newTaskText}
@@ -69,7 +69,7 @@ const ToDoList: FC = () => {
             />
             <Button 
               type="submit" 
-              className="bg-amber-500 hover:bg-amber-600 text-gray-900 px-4 rounded-r-md transition-colors duration-200 h-[50px] flex items-center justify-center"
+              className="bg-amber-500 hover:bg-amber-600 text-gray-900 px-4 rounded-none rounded-r-md transition-colors duration-200 h-[50px] flex items-center justify-center border border-amber-500 border-l-0"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
