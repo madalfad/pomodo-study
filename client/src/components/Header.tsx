@@ -32,17 +32,6 @@ const Header: FC = () => {
           </Link>
           
           <div className="flex items-center space-x-3 text-sm font-workSans">
-            <motion.button
-              className="flex items-center px-3 py-1.5 rounded-full bg-gray-800/70 hover:bg-gray-800 transition-colors duration-200"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Toggle theme"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            </motion.button>
-            
             <motion.button 
               onClick={toggleInfo}
               className="flex items-center space-x-1 px-4 py-2 rounded-md border border-gray-700 hover:border-amber-500 hover:bg-gray-800 transition-colors duration-200"
