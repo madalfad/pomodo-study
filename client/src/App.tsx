@@ -14,11 +14,27 @@ function Home() {
   return (
     <div className="flex-grow container mx-auto px-4 py-6 md:py-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 space-y-6">
-          <SoundMixer />
-          <GlobeVisualization />
+        {/* Desktop: Left column with Sound Mixer & Globe */}
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          {/* Sound Mixer always appears first */}
+          <div className="order-1">
+            <SoundMixer />
+          </div>
+          
+          {/* On mobile only: Timer and Todo appear second */}
+          <div className="block lg:hidden order-2 space-y-6">
+            <PomodoroTimer />
+            <ToDoList />
+          </div>
+          
+          {/* Globe appears after Timer & Todo on mobile, but right after Sound Mixer on desktop */}
+          <div className="order-3 lg:order-2">
+            <GlobeVisualization />
+          </div>
         </div>
-        <div className="lg:col-span-4 space-y-6">
+        {/* Desktop: Right column - Timer & Todo list */}
+        {/* These only show on desktop */}
+        <div className="lg:col-span-4 space-y-6 lg:order-2 hidden lg:block">
           <PomodoroTimer />
           <ToDoList />
         </div>
