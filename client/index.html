@@ -2,13 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/tomato-favicon.svg" />
-    <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/tomato-favicon.svg" />
+    <!-- Primary favicon -->
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <!-- SVG favicon for modern browsers -->
+    <link rel="icon" type="image/svg+xml" href="/tomato-favicon.svg">
+    <!-- PNG favicons for better compatibility -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/tomato-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/tomato-512.png">
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="/tomato-192.png">
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <!-- Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Work+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <!-- Theme and description metadata -->
     <meta name="theme-color" content="#2D3250" />
     <meta name="description" content="A distraction-free focus and study environment with ambient sounds, pomodoro timer, and productivity tools." />
     <title>pomodo.study</title>
