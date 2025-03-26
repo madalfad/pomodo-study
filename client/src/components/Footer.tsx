@@ -1,8 +1,38 @@
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import { motion } from "framer-motion";
 
 const Footer: FC = () => {
   const currentYear = new Date().getFullYear();
+
+  // Effect to load the Buy Me A Coffee widget
+  useEffect(() => {
+    // Create script element
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js";
+    script.setAttribute("data-name", "BMC-Widget");
+    script.setAttribute("data-cfasync", "false");
+    script.setAttribute("data-id", "madalfad");
+    script.setAttribute("data-description", "Support me on Buy me a coffee!");
+    script.setAttribute("data-message", "");
+    script.setAttribute("data-color", "#FF5F5F");
+    script.setAttribute("data-position", "Right");
+    script.setAttribute("data-x_margin", "18");
+    script.setAttribute("data-y_margin", "18");
+    script.async = true;
+    
+    // Add to document
+    document.body.appendChild(script);
+    
+    // Cleanup function
+    return () => {
+      document.body.removeChild(script);
+      // Remove the widget container if it exists
+      const widgetContainer = document.querySelector(".bmc-container");
+      if (widgetContainer) {
+        document.body.removeChild(widgetContainer);
+      }
+    };
+  }, []);
 
   return (
     <motion.footer
@@ -23,30 +53,14 @@ const Footer: FC = () => {
             </div>
           </div>
 
+          {/* BMC Widget is added via JavaScript, so this space is left empty */}
           <div className="flex items-center space-x-4">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
-            >
-              <a 
-                href="https://www.buymeacoffee.com/madalfad" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-block rounded shadow-md hover:shadow-lg transition-shadow duration-300"
-              >
-                <img 
-                  src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=madalfad&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff"
-                  alt="Buy Me A Coffee"
-                  className="h-10"
-                />
-              </a>
-            </motion.div>
+            {/* Widget will appear on the page, not in the footer */}
           </div>
         </div>
 
         <div className="mt-6 border-t border-gray-800 pt-4 text-center text-xs text-gray-500 font-workSans">
-          <p>&copy; {currentYear} Mahmoud Al-Fadhl. All rights reserved.</p>
+          <p>&copy; {currentYear} <a href="https://linktr.ee/madalfad" target="_blank" rel="noopener noreferrer">Mahmoud Al-Fadhl</a>. All rights reserved.</p>
           <p className="mt-1">
             Focus better with customizable sounds and productivity tools.
           </p>
