@@ -33,7 +33,7 @@ const Footer: FC = () => {
           <p>
             &copy; {currentYear}{" "}
             <a
-              href="https://madalfad.me"
+              href="mailto:hey@pomodo.study"
               target="_blank"
               rel="noopener noreferrer"
             >
