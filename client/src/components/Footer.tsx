@@ -30,7 +30,17 @@ const Footer: FC = () => {
         </div>
 
         <div className="mt-6 border-t border-gray-800 pt-4 text-center text-xs text-gray-500 font-workSans">
-          <p>&copy; {currentYear} <a href="https://linktr.ee/madalfad" target="_blank" rel="noopener noreferrer">Mahmoud Al-Fadhl</a>. All rights reserved.</p>
+          <p>
+            &copy; {currentYear}{" "}
+            <a
+              href="https://madalfad.me"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Mahmoud Al-Fadhl
+            </a>
+            . All rights reserved.
+          </p>
           <p className="mt-1">
             Focus better with customizable sounds and productivity tools.
           </p>
