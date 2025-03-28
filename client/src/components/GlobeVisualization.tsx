@@ -80,70 +80,38 @@ const GlobeVisualization: FC = () => {
     const count = Math.floor(Math.random() * 500) + 1000;
     setActiveUsers(count);
     
-    // First try native browser geolocation API for most accurate results
+    // Use IP-based geolocation only (no browser geolocation prompts)
     try {
-      // Use browser's geolocation API directly, without permissions check
-      // (browser will handle permission UI if needed)
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve, 
-          reject, 
-          {
-            timeout: 5000,
-            enableHighAccuracy: true,
-            maximumAge: 60000 // 1 minute
-          }
-        );
+      // Try ipapi.co for IP-based geolocation 
+      const response = await fetch('https://ipapi.co/json/');
+      const data = await response.json();
+      
+      if (data.latitude && data.longitude) {
+        users.push({
+          id: 'self',
+          lat: parseFloat(data.latitude),
+          lng: parseFloat(data.longitude),
+          timestamp: Date.now(),
+          color: '#F6B17A', // Warm orange for user
+          size: 0.025 // Larger size for user's location
+        });
+        console.log('Using IP geolocation:', data.latitude, data.longitude);
+      } else {
+        throw new Error('IP geolocation did not return coordinates');
+      }
+    } catch (ipError) {
+      console.log('IP geolocation failed, using default location');
+      
+      // IP geolocation failed, use default
+      users.push({
+        id: 'self',
+        // Default to San Francisco as a fallback
+        lat: 37.7749,
+        lng: -122.4194,
+        timestamp: Date.now(),
+        color: '#F6B17A', // Warm orange for user
+        size: 0.025 // Larger size for user's location
       });
-      
-      // If we got coordinates, add user at their real location
-      if (position?.coords) {
-        users.push({
-          id: 'self',
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          timestamp: Date.now(),
-          color: '#F6B17A', // Warm orange for user
-          size: 0.025 // Larger size for user's location
-        });
-        console.log('Using browser geolocation:', position.coords.latitude, position.coords.longitude);
-      }
-    } catch (geoError) {
-      console.log('Browser geolocation failed, falling back to IP geolocation');
-      
-      // Browser geolocation failed, try IP geolocation as fallback
-      try {
-        // Try ipapi.co for geolocation 
-        const response = await fetch('https://ipapi.co/json/');
-        const data = await response.json();
-        
-        if (data.latitude && data.longitude) {
-          users.push({
-            id: 'self',
-            lat: parseFloat(data.latitude),
-            lng: parseFloat(data.longitude),
-            timestamp: Date.now(),
-            color: '#F6B17A', // Warm orange for user
-            size: 0.025 // Larger size for user's location
-          });
-          console.log('Using IP geolocation:', data.latitude, data.longitude);
-        } else {
-          throw new Error('IP geolocation did not return coordinates');
-        }
-      } catch (ipError) {
-        console.log('All geolocation methods failed, using default location');
-        
-        // All geolocation attempts failed, use default
-        users.push({
-          id: 'self',
-          // Default to San Francisco as a fallback
-          lat: 37.7749,
-          lng: -122.4194,
-          timestamp: Date.now(),
-          color: '#F6B17A', // Warm orange for user
-          size: 0.025 // Larger size for user's location
-        });
-      }
     }
     
     // Add major study regions as active points
