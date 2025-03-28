@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useLocalStorage } from "@/lib/useLocalStorage";
 import { motion, AnimatePresence } from "framer-motion";
+import { TimerSounds } from "@/assets/audio";
+import { playSound, preloadSound } from "@/lib/simpleSoundPlayer";
 
 interface Task {
   id: string;
@@ -29,7 +31,19 @@ const ToDoList: FC = () => {
     setNewTaskText("");
   };
 
+  // Preload the task complete sound when component mounts
+  useEffect(() => {
+    preloadSound(TimerSounds.taskComplete);
+  }, []);
+
   const toggleTaskComplete = (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    
+    // Play completion sound only when marking as complete (not when unchecking)
+    if (task && !task.completed) {
+      playSound(TimerSounds.taskComplete, 0.5); // Play at 50% volume
+    }
+    
     setTasks(tasks.map(task => 
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
