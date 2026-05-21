@@ -71,6 +71,37 @@ This project was originally created on Replit. To keep it portable:
 - The server's `reusePort` socket option (Linux-only) is disabled
   automatically on Windows.
 
+## Deploying to Vercel
+
+This repo ships a `vercel.json` that treats the project as a pure static SPA
+(which is what it actually is — the original Express endpoint at
+`/api/active-users` is no longer used by the client). When you import the repo
+into Vercel:
+
+- **Build Command:** `npm run build:client` (already set in `vercel.json`)
+- **Output Directory:** `dist/public` (already set in `vercel.json`)
+- **Framework Preset:** *Other* (Vercel will pick this up from `vercel.json`)
+
+The `vercel.json` also adds a SPA fallback (`rewrites` → `/index.html`) so that
+client-side routes handled by `wouter` work on hard refresh.
+
+> **Do not** use Vercel's default "Node.js" preset for this project — that
+> would try to run the bundled Express server (`dist/index.js`) as a
+> serverless function and you would see the bundled source dumped into the
+> browser instead of the app. The included `vercel.json` overrides that.
+
+If you previously deployed with the wrong settings, go to the Vercel project's
+*Settings → General* and clear any custom *Build Command*, *Output Directory*
+and *Install Command* overrides so Vercel falls back to the values from
+`vercel.json`, then trigger a new deployment.
+
+Local CLI deploy:
+
+```sh
+npx vercel       # preview deploy
+npx vercel --prod
+```
+
 ## Optional: database
 
 The schema in `shared/schema.ts` and the `drizzle.config.ts` file expect a
